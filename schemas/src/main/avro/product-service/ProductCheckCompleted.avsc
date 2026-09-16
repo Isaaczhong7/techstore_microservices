@@ -1,0 +1,52 @@
+{
+  "type": "record",
+  "name": "ProductCheckCompleted",
+  "namespace": "com.techstore.kafka.product",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "orderId",
+      "type": "string"
+    },
+    {
+      "name": "productList",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "record",
+          "name": "ProductEntryCompleted",
+          "fields": [
+            {
+              "name": "productId",
+              "type": "long"
+            },
+            {
+              "name": "productName",
+              "type": "string"
+            },
+            {
+              "name": "price",
+              "type": {
+                "type": "bytes",
+                "logicalType": "decimal",
+                "precision": 19,
+                "scale": 2
+              }
+            },
+            {
+              "name": "active",
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      "default": []
+    }
+  ]
+}

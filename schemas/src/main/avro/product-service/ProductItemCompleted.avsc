@@ -1,0 +1,81 @@
+{
+  "type": "record",
+  "name": "ProductItemCompleted",
+  "namespace": "com.techstore.kafka.product",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "productId",
+      "type": "long"
+    },
+    {
+      "name": "productName",
+      "type": "string"
+    },
+    {
+      "name": "description",
+      "type": "string"
+    },
+    {
+      "name": "category",
+      "type": [
+        "null",
+        {
+          "type": "enum",
+          "name": "ItemCategory",
+          "symbols": [
+            "LAPTOP",
+            "DESKTOP",
+            "SMARTPHONE",
+            "TABLET",
+            "MONITOR",
+            "KEYBOARD",
+            "MOUSE",
+            "HEADPHONES",
+            "SPEAKER",
+            "CAMERA",
+            "SMARTWATCH",
+            "STORAGE",
+            "MEMORY",
+            "PROCESSOR",
+            "GRAPHICS_CARD",
+            "MOTHERBOARD",
+            "POWER_SUPPLY",
+            "NETWORKING",
+            "ACCESSORY",
+            "OTHER"
+          ]
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "price",
+      "type": [
+        "null",
+        {
+          "type": "bytes",
+          "logicalType": "decimal",
+          "precision": 12,
+          "scale": 2
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "active",
+      "type": ["null", "boolean"],
+      "default": null
+    },
+    {
+      "name": "version",
+      "type": "long"
+    }
+  ]
+}

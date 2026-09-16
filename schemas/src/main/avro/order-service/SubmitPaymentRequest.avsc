@@ -1,0 +1,49 @@
+{
+  "type": "record",
+  "name": "SubmitPaymentRequested",
+  "namespace": "com.techstore.kafka.order",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "orderId",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "paymentId",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "currencyType",
+      "type": {
+        "type": "enum",
+        "name": "CurrencyType",
+        "symbols": [
+          "CNY",
+          "USD",
+          "JPY",
+          "GBP",
+          "EUR"
+        ]
+      }
+    },
+    {
+      "name": "paymentMethodId",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    }
+  ]
+}

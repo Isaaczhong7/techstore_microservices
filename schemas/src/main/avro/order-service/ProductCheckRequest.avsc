@@ -1,0 +1,40 @@
+{
+  "type": "record",
+  "name": "ProductCheckRequested",
+  "namespace": "com.techstore.kafka.order",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "orderId",
+      "type": "string"
+    },
+    {
+      "name": "products",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "record",
+          "name": "ProductEntry",
+          "fields": [
+            {
+              "name": "productId",
+              "type": "long"
+            },
+            {
+              "name": "quantity",
+              "type": "long"
+            }
+
+          ]
+        }
+      },
+      "default": []
+    }
+  ]
+}

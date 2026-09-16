@@ -1,0 +1,11 @@
+{
+  "type": "record",
+  "name": "InventoryItemRequested",
+  "namespace": "com.techstore.kafka.lookup",
+  "fields": [
+    {
+      "name": "productId",
+      "type": "long"
+    }
+  ]
+}

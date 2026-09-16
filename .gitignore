@@ -1,0 +1,51 @@
+# Build output
+target/
+*/target/
+build/
+out/
+
+# Maven wrapper/runtime noise
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Logs and runtime files
+*.log
+logs/
+*.pid
+*.seed
+*.stackdump
+
+# Local environment and secrets
+.env
+.env.*
+application-local.yml
+application-local.yaml
+application-*.local.yml
+application-*.local.yaml
+*.key
+*.pem
+*.p12
+*.jks
+
+# IDE/editor files
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker/local data
+docker-data/
+tmp/
+temp/
+
+# Test reports and coverage
+surefire-reports/
+failsafe-reports/
+jacoco.exec
+coverage/

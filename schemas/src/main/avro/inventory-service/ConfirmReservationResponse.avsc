@@ -1,0 +1,44 @@
+{
+  "type": "record",
+  "name": "ConfirmReservationCompleted",
+  "namespace": "com.techstore.kafka.inventory",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "status",
+      "type": {
+        "type": "enum",
+        "name": "ReservationStatus",
+        "symbols": [
+          "ACTIVE",
+          "PARTIAL",
+          "FAIL",
+          "CONFIRMED",
+          "RELEASED",
+          "EXPIRED",
+          "CANCEL"
+        ]
+      }
+    },
+    {
+      "name": "reservationId",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "orderId",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    }
+  ]
+}

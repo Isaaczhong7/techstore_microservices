@@ -1,0 +1,79 @@
+{
+  "type": "record",
+  "name": "InventoryReservationCompleted",
+  "namespace": "com.techstore.kafka.inventory",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "reservationId",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "orderId",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "status",
+      "type": {
+        "type": "enum",
+        "name": "ReservationStatus",
+        "symbols": [
+          "ACTIVE",
+          "PARTIAL",
+          "FAIL",
+          "CONFIRMED",
+          "RELEASED",
+          "EXPIRED",
+          "CANCEL"
+        ]
+      }
+    },
+    {
+      "name": "items",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "record",
+          "name": "ReservationItemCompleted",
+          "fields": [
+            {
+              "name": "productId",
+              "type": "long"
+            },
+            {
+              "name": "quantity",
+              "type": "long"
+            },
+            {
+              "name": "status",
+              "type": {
+                "type": "enum",
+                "name": "ReservationItemStatus",
+                "symbols": [
+                  "RESERVED",
+                  "OUT_OF_STOCK",
+                  "INVENTORY_NOT_FOUND",
+                  "CONFIRMED",
+                  "RELEASED",
+                  "EXPIRED"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "type": "record",
+  "name": "InventoryItemCompleted",
+  "namespace": "com.techstore.kafka.inventory",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
+    },
+    {
+      "name": "productId",
+      "type": "long"
+    },
+    {
+      "name": "itemSold",
+      "type": "long"
+    },
+    {
+      "name": "quantity",
+      "type": "long"
+    },
+    {
+      "name": "version",
+      "type": "long"
+    }
+  ]
+}
