@@ -3,6 +3,11 @@ target/
 */target/
 build/
 out/
+dist/
+*/dist/
+node_modules/
+*/node_modules/
+*.tsbuildinfo
 
 # Maven wrapper/runtime noise
 .mvn/timing.properties

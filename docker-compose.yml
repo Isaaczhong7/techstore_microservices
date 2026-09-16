@@ -332,6 +332,31 @@ services:
         http://schema-registry:8081
       JAVA_TOOL_OPTIONS: "-Dorg.apache.avro.SERIALIZABLE_PACKAGES=com.techstore.kafka"
 
+  # =========================================================
+  # Frontend - port 3000
+  # =========================================================
+  frontend:
+    build:
+      context: ./frontend
+
+    container_name: techstore-frontend
+
+    depends_on:
+      product-service:
+        condition: service_healthy
+
+      inventory-service:
+        condition: service_healthy
+
+      order-service:
+        condition: service_started
+
+      lookup-service:
+        condition: service_started
+
+    ports:
+      - "3000:80"
+
 # =========================================================
 # Persistent database storage
 # =========================================================
