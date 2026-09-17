@@ -1,42 +1,32 @@
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
-import { Boxes, PackagePlus, RefreshCw, XCircle } from "lucide-react";
+import { Boxes, PackagePlus } from "lucide-react";
 import { CatalogHeader } from "../components/CatalogHeader";
 import { Pagination } from "../components/Pagination";
-import { StatusText } from "../components/Status";
 import { categories, currency, PAGE_SIZE } from "../lib/constants";
 import { formatEnum } from "../lib/format";
-import type { Category, InventoryItem, OrderEntry, Product, ProductForm, StateSetter } from "../types";
+import type { Category, InventoryItem, Product, ProductForm, StateSetter } from "../types";
 
 type Props = {
   filteredCatalog: Product[];
   inventoryAdjustments: Record<string, string>;
   inventoryByProduct: Map<string, InventoryItem>;
-  isLoading: boolean;
-  orders: OrderEntry[];
   productForm: ProductForm;
   query: string;
   selectedCategory: "ALL" | Category;
   onAddInventory: (productId: string, quantity: number) => Promise<void>;
-  onCancelOrder: (orderId?: string) => Promise<void>;
   onCategoryChange: (value: "ALL" | Category) => void;
   onCreateProduct: (event: FormEvent) => Promise<void>;
   onProductFormChange: StateSetter<ProductForm>;
   onQueryChange: (value: string) => void;
-  onRefresh: () => Promise<void>;
   onSetInventoryAdjustments: StateSetter<Record<string, string>>;
 };
 
 export function SellerPage(props: Props) {
   const [productPage, setProductPage] = useState(0);
-  const [orderPage, setOrderPage] = useState(0);
   const visibleProducts = useMemo(
     () => props.filteredCatalog.slice(productPage * PAGE_SIZE, productPage * PAGE_SIZE + PAGE_SIZE),
     [productPage, props.filteredCatalog]
-  );
-  const visibleOrders = useMemo(
-    () => props.orders.slice(orderPage * PAGE_SIZE, orderPage * PAGE_SIZE + PAGE_SIZE),
-    [orderPage, props.orders]
   );
 
   return (
@@ -94,7 +84,7 @@ export function SellerPage(props: Props) {
               <div className="seller-row" key={product.productId}>
                 <span>
                   <strong>{product.productName}</strong>
-                  <small>{product.productId}</small>
+                  <small>{currency.format(Number(product.price || 0))}</small>
                 </span>
                 <span>{formatEnum(product.category)}</span>
                 <span>{quantity}</span>
@@ -118,39 +108,6 @@ export function SellerPage(props: Props) {
           {!visibleProducts.length && <div className="empty-state">No products available</div>}
         </div>
         <Pagination page={productPage} pageSize={PAGE_SIZE} totalItems={props.filteredCatalog.length} onPageChange={setProductPage} />
-      </section>
-
-      <section className="catalog-panel">
-        <div className="panel-header">
-          <h2>Order entries</h2>
-          <button className="icon-button text-button" onClick={props.onRefresh} disabled={props.isLoading}>
-            <RefreshCw size={17} className={props.isLoading ? "spin" : ""} />
-            Refresh
-          </button>
-        </div>
-        <div className="order-list">
-          {visibleOrders.map((order) => (
-            <article className="order-entry" key={order.id}>
-              <div>
-                <strong>{order.email}</strong>
-                <span>{order.id}</span>
-              </div>
-              <div>
-                <StatusText value={order.status} />
-                <span>{order.paymentStatus || "Payment pending"}</span>
-              </div>
-              <div>
-                <span>{currency.format(Number(order.totalAmount || 0))}</span>
-                <button className="danger-button" onClick={() => void props.onCancelOrder(order.id)} disabled={order.status === "CANCELLED" || order.status === "CONFIRMED"}>
-                  <XCircle size={16} />
-                  Cancel
-                </button>
-              </div>
-            </article>
-          ))}
-          {!visibleOrders.length && <div className="empty-state">No order entries yet</div>}
-        </div>
-        <Pagination page={orderPage} pageSize={PAGE_SIZE} totalItems={props.orders.length} onPageChange={setOrderPage} />
       </section>
     </section>
   );

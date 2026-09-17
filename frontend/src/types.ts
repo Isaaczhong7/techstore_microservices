@@ -1,6 +1,6 @@
 import type React from "react";
 
-export type Page = "customer" | "checkout" | "seller";
+export type Page = "customer" | "checkout" | "payment" | "orderDetail" | "seller";
 export type CustomerType = "GUEST" | "MEMBER";
 
 export type Category =
@@ -52,6 +52,7 @@ export type OrderResult = {
   reservationId?: string;
   status: OrderStatus;
   expiresAt?: string;
+  expiresInSeconds?: number;
 };
 
 export type OrderItemEntry = {
@@ -73,6 +74,7 @@ export type OrderEntry = {
   totalAmount?: number;
   createdAt?: string;
   expiresAt?: string;
+  expiresInSeconds?: number;
   items?: OrderItemEntry[];
 };
 

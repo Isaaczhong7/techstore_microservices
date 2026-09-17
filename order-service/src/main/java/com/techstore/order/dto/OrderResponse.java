@@ -40,5 +40,7 @@ public class OrderResponse {
 
     private LocalDateTime expiresAt;
 
+    private Long expiresInSeconds;
+
     private List<OrderItemResponse> items;
 }

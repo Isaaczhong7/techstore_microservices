@@ -1,32 +1,40 @@
 import { useMemo, useState } from "react";
-import { ShoppingCart, Trash2 } from "lucide-react";
+import { Eye, ShoppingCart, Trash2, XCircle } from "lucide-react";
 import { CatalogHeader } from "../components/CatalogHeader";
 import { Pagination } from "../components/Pagination";
-import { Status } from "../components/Status";
+import { Status, StatusText } from "../components/Status";
 import { currency, PAGE_SIZE } from "../lib/constants";
 import { formatEnum } from "../lib/format";
-import type { CartLine, Category, InventoryItem, Product } from "../types";
+import type { CartLine, Category, InventoryItem, OrderEntry, Product } from "../types";
 
 type Props = {
   cartLines: CartLine[];
   cartTotal: number;
   filteredCatalog: Product[];
   inventoryByProduct: Map<string, InventoryItem>;
+  orders: OrderEntry[];
   query: string;
   selectedCategory: "ALL" | Category;
   onAddToCart: (productId: string) => void;
+  onCancelOrder: (orderId?: string) => Promise<void>;
   onCategoryChange: (value: "ALL" | Category) => void;
   onCheckout: () => void;
   onQueryChange: (value: string) => void;
   onRemoveFromCart: (productId: string) => void;
   onSetCartQuantity: (productId: string, quantity: number) => void;
+  onViewOrder: (orderId: string) => void;
 };
 
 export function CustomerPage(props: Props) {
   const [catalogPage, setCatalogPage] = useState(0);
+  const [orderPage, setOrderPage] = useState(0);
   const visibleProducts = useMemo(
     () => props.filteredCatalog.slice(catalogPage * PAGE_SIZE, catalogPage * PAGE_SIZE + PAGE_SIZE),
     [catalogPage, props.filteredCatalog]
+  );
+  const visibleOrders = useMemo(
+    () => props.orders.slice(orderPage * PAGE_SIZE, orderPage * PAGE_SIZE + PAGE_SIZE),
+    [orderPage, props.orders]
   );
 
   return (
@@ -104,6 +112,36 @@ export function CustomerPage(props: Props) {
             <ShoppingCart size={17} />
             Checkout
           </button>
+        </section>
+
+        <section className="tool-panel">
+          <h2>Order entries</h2>
+          <div className="compact-order-list">
+            {visibleOrders.map((order) => (
+              <article className="customer-order-entry" key={order.id}>
+                <div>
+                  <strong>Order entry</strong>
+                  <span>{order.email}</span>
+                </div>
+                <div>
+                  <StatusText value={order.status} />
+                  <span>{currency.format(Number(order.totalAmount || 0))}</span>
+                </div>
+                <div className="split-actions">
+                  <button className="icon-button text-button" onClick={() => props.onViewOrder(order.id)}>
+                    <Eye size={16} />
+                    View
+                  </button>
+                  <button className="danger-button" onClick={() => void props.onCancelOrder(order.id)} disabled={order.status === "CANCELLED" || order.status === "CONFIRMED"}>
+                    <XCircle size={16} />
+                    Cancel
+                  </button>
+                </div>
+              </article>
+            ))}
+            {!visibleOrders.length && <div className="muted">No order entries yet</div>}
+          </div>
+          <Pagination page={orderPage} pageSize={PAGE_SIZE} totalItems={props.orders.length} onPageChange={setOrderPage} />
         </section>
       </aside>
     </section>

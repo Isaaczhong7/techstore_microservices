@@ -1,6 +1,6 @@
 :root {
-  color: #18212f;
-  background: #f6f7f9;
+  color: #1b0505;
+  background: #f8f8f8;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -32,7 +32,7 @@ button:disabled {
 
 main {
   min-height: 100vh;
-  padding: 28px;
+  padding: 32px;
 }
 
 .app-header {
@@ -129,7 +129,7 @@ h3 {
 }
 
 .metric svg {
-  color: #28666e;
+  color: #c3332c;
   grid-row: span 2;
 }
 
@@ -168,7 +168,7 @@ h3 {
 .tool-panel,
 .admin-form {
   background: #ffffff;
-  border: 1px solid #dde3ea;
+  border: 1px solid #eadeda;
   border-radius: 8px;
 }
 
@@ -193,8 +193,8 @@ h3 {
 .search,
 .select-wrap {
   align-items: center;
-  background: #f7f9fb;
-  border: 1px solid #d7dee7;
+  background: #f8f8f8;
+  border: 1px solid #e4d4cf;
   border-radius: 8px;
   color: #5b6574;
   display: flex;
@@ -221,8 +221,8 @@ h3 {
 .form-stack select,
 .admin-form input,
 .admin-form select {
-  background: #f7f9fb;
-  border: 1px solid #d7dee7;
+  background: #f8f8f8;
+  border: 1px solid #e4d4cf;
   border-radius: 8px;
   min-height: 40px;
   padding: 0 10px;
@@ -235,7 +235,8 @@ h3 {
 }
 
 .product-card {
-  border: 1px solid #dde3ea;
+  background: #fffefe;
+  border: 1px solid #eadeda;
   border-radius: 8px;
   display: grid;
   gap: 12px;
@@ -283,8 +284,8 @@ h3 {
 }
 
 .status.active {
-  background: #e5f5ec;
-  color: #12683a;
+  background: #f7e8e4;
+  color: #500e11;
 }
 
 .status.inactive {
@@ -307,14 +308,14 @@ h3 {
 }
 
 .primary-button {
-  background: #28666e;
+  background: #500e11;
   color: #ffffff;
 }
 
 .danger-button {
-  background: #fff1f0;
-  border-color: #ffd3cf;
-  color: #ad2d22;
+  background: #fff2ef;
+  border-color: #edc9c0;
+  color: #c3332c;
 }
 
 .icon-button {
@@ -344,7 +345,7 @@ h3 {
 }
 
 .cart-line {
-  background: #f7f9fb;
+  background: #fbf7f6;
   border-radius: 8px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 72px 36px;
@@ -384,8 +385,8 @@ h3 {
 }
 
 .order-box {
-  background: #f7f9fb;
-  border: 1px solid #d7dee7;
+  background: #fbf7f6;
+  border: 1px solid #e4d4cf;
   border-radius: 8px;
   display: grid;
   gap: 8px;
@@ -400,10 +401,10 @@ h3 {
 }
 
 .expiry-box {
-  background: #eef5ff;
-  border: 1px solid #cfe2ff;
+  background: #500e11;
+  border: 1px solid #500e11;
   border-radius: 8px;
-  color: #194e87;
+  color: #ffffff;
   font-weight: 700;
   padding: 12px;
 }
@@ -469,7 +470,7 @@ h3 {
 }
 
 .seller-head {
-  background: #f7f9fb;
+  background: #fbf7f6;
   color: #657084;
   font-size: 0.82rem;
   font-weight: 700;
@@ -498,8 +499,8 @@ h3 {
 }
 
 .inventory-editor input {
-  background: #f7f9fb;
-  border: 1px solid #d7dee7;
+  background: #f8f8f8;
+  border: 1px solid #e4d4cf;
   border-radius: 8px;
   min-height: 38px;
   min-width: 0;
@@ -537,7 +538,66 @@ h3 {
 }
 
 .status-text {
-  color: #28666e;
+  color: #500e11;
+}
+
+.compact-order-list {
+  display: grid;
+  gap: 10px;
+}
+
+.customer-order-entry {
+  background: #fbf7f6;
+  border: 1px solid #eadeda;
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.customer-order-entry div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.customer-order-entry strong,
+.customer-order-entry span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.customer-order-entry span {
+  color: #6d5855;
+  font-size: 0.84rem;
+}
+
+.payment-shell {
+  background: linear-gradient(180deg, #ffffff 0%, #fbf7f6 100%);
+}
+
+.payment-panel {
+  background: #500e11;
+  border-color: #500e11;
+  color: #ffffff;
+}
+
+.payment-panel h2 {
+  color: #ffffff;
+}
+
+.payment-panel input,
+.payment-panel select {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.payment-panel .primary-button {
+  background: #c3332c;
+}
+
+.payment-countdown {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .toggle-line {

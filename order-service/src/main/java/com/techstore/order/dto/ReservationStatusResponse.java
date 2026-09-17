@@ -19,4 +19,5 @@ public class ReservationStatusResponse {
     private UUID reservationId;
     private OrderStatus status;
     private LocalDateTime expiresAt;
+    private Long expiresInSeconds;
 }

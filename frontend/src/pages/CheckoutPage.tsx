@@ -1,10 +1,8 @@
 import type { FormEvent } from "react";
 import { ClipboardList, CreditCard, Home, RefreshCw, Trash2, XCircle } from "lucide-react";
 import { OrderSummary } from "../components/OrderSummary";
-import { useNow } from "../hooks/useNow";
 import { currency } from "../lib/constants";
-import { formatRemainingTime } from "../lib/format";
-import type { CartLine, CustomerType, OrderEntry, OrderForm, OrderResult, PaymentForm, Product, StateSetter } from "../types";
+import type { CartLine, OrderEntry, OrderForm, OrderResult, PaymentForm, Product, StateSetter } from "../types";
 
 type Props = {
   cartLines: CartLine[];
@@ -19,19 +17,16 @@ type Props = {
   onCancelOrder: () => Promise<void>;
   onCreateOrder: (event: FormEvent) => Promise<void>;
   onHome: () => void;
-  onPaymentFormChange: StateSetter<PaymentForm>;
+  onPaymentPage: () => void;
   onRemoveFromCart: (productId: string) => void;
   onSetCartQuantity: (productId: string, quantity: number) => void;
   onSetCurrentOrderId: (value: string) => void;
   onSetOrderForm: StateSetter<OrderForm>;
-  onSubmitPayment: (event: FormEvent) => Promise<void>;
   onViewOrder: (event?: FormEvent) => Promise<void>;
 };
 
 export function CheckoutPage(props: Props) {
-  const expiresAt = props.currentOrder?.expiresAt || props.lastOrder?.expiresAt;
   const hasOrder = Boolean(props.lastOrder || props.currentOrder);
-  const now = useNow();
 
   return (
     <section className="checkout-page">
@@ -76,58 +71,32 @@ export function CheckoutPage(props: Props) {
             <h2>Place order</h2>
             <form onSubmit={props.onCreateOrder} className="form-stack">
               <input value={props.orderForm.email} onChange={(event) => props.onSetOrderForm({ ...props.orderForm, email: event.target.value })} placeholder="Email" required />
-              <select value={props.orderForm.customerType} onChange={(event) => props.onSetOrderForm({ ...props.orderForm, customerType: event.target.value as CustomerType })}>
-                <option value="GUEST">Guest</option>
-                <option value="MEMBER">Member</option>
-              </select>
-              {props.orderForm.customerType === "MEMBER" && (
-                <input value={props.orderForm.customerId} onChange={(event) => props.onSetOrderForm({ ...props.orderForm, customerId: event.target.value })} placeholder="Customer UUID" />
-              )}
               <button className="primary-button" type="submit" disabled={!props.cartLines.length || hasOrder}>
                 <ClipboardList size={17} />
                 Create order
               </button>
             </form>
-            {hasOrder && <div className="expiry-box">Reservation time: {formatRemainingTime(expiresAt, now)}</div>}
+            <button className="primary-button" type="button" onClick={props.onPaymentPage} disabled={!hasOrder}>
+              <CreditCard size={17} />
+              Continue to payment
+            </button>
           </section>
 
           <section className="tool-panel">
             <h2>Current order</h2>
-            <form onSubmit={props.onViewOrder} className="form-stack">
-              <input value={props.currentOrderId} onChange={(event) => props.onSetCurrentOrderId(event.target.value)} placeholder="Order UUID" />
-              <div className="split-actions">
-                <button className="icon-button text-button" type="submit">
-                  <RefreshCw size={17} className={props.isLoading ? "spin" : ""} />
-                  View
-                </button>
-                <button className="danger-button" type="button" onClick={() => void props.onCancelOrder()} disabled={!props.lastOrder && !props.currentOrderId && !props.paymentForm.orderId}>
-                  <XCircle size={17} />
-                  Cancel
-                </button>
-              </div>
-            </form>
+            <div className="split-actions">
+              <button className="icon-button text-button" type="button" onClick={() => void props.onViewOrder()} disabled={!props.lastOrder && !props.currentOrderId && !props.paymentForm.orderId}>
+                <RefreshCw size={17} className={props.isLoading ? "spin" : ""} />
+                Refresh
+              </button>
+              <button className="danger-button" type="button" onClick={() => void props.onCancelOrder()} disabled={!props.lastOrder && !props.currentOrderId && !props.paymentForm.orderId}>
+                <XCircle size={17} />
+                Cancel
+              </button>
+            </div>
             <OrderSummary order={props.currentOrder} fallback={props.lastOrder} productById={props.productById} />
           </section>
 
-          <section className="tool-panel">
-            <h2>Payment</h2>
-            <form onSubmit={props.onSubmitPayment} className="form-stack">
-              <input value={props.paymentForm.orderId} onChange={(event) => props.onPaymentFormChange({ ...props.paymentForm, orderId: event.target.value })} placeholder="Order UUID" required />
-              <input value={props.paymentForm.paymentId} onChange={(event) => props.onPaymentFormChange({ ...props.paymentForm, paymentId: event.target.value })} placeholder="Payment UUID" required />
-              <input value={props.paymentForm.paymentMethodId} onChange={(event) => props.onPaymentFormChange({ ...props.paymentForm, paymentMethodId: event.target.value })} placeholder="Payment method UUID" required />
-              <select value={props.paymentForm.currencyType} onChange={(event) => props.onPaymentFormChange({ ...props.paymentForm, currencyType: event.target.value })}>
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="GBP">GBP</option>
-                <option value="JPY">JPY</option>
-                <option value="CNY">CNY</option>
-              </select>
-              <button className="primary-button" type="submit">
-                <CreditCard size={17} />
-                Submit payment
-              </button>
-            </form>
-          </section>
         </div>
       </div>
     </section>

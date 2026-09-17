@@ -32,6 +32,21 @@ export function formatRemainingTime(expiresAt?: string, now = Date.now()) {
   return `${minutes}m ${seconds.toString().padStart(2, "0")}s remaining`;
 }
 
+export function formatRemainingSeconds(remainingSeconds?: number | null) {
+  if (remainingSeconds == null || !Number.isFinite(remainingSeconds)) {
+    return "Waiting for expiration time";
+  }
+
+  const normalizedSeconds = Math.max(0, Math.ceil(remainingSeconds));
+  if (normalizedSeconds <= 0) return "Expired";
+
+  const minutes = Math.floor(normalizedSeconds / 60);
+  const seconds = normalizedSeconds % 60;
+  if (minutes <= 0) return `${seconds}s remaining`;
+
+  return `${minutes}m ${seconds.toString().padStart(2, "0")}s remaining`;
+}
+
 export function messageFrom(error: unknown) {
   if (error instanceof Error) {
     return error.message.replaceAll('"', "");

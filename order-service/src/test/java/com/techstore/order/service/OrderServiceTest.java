@@ -480,6 +480,29 @@ class OrderServiceTest {
     }
 
     @Test
+    void getOrderByIdReturnsFullOrderEntryWithExpirationAndItems() {
+        UUID orderId = UUID.randomUUID();
+        UUID paymentId = UUID.randomUUID();
+        UUID reservationId = UUID.randomUUID();
+        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.PENDING, item(PRODUCT_1, 2L));
+        order.setPaymentID(paymentId);
+        order.setReservationId(reservationId);
+        order.setTotalAmount(BigDecimal.valueOf(499.99));
+        order.getItems().get(0).setUnitPrice(BigDecimal.valueOf(249.995));
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        var response = orderService.getOrderById(orderId);
+
+        assertThat(response.getId()).isEqualTo(orderId);
+        assertThat(response.getPaymentId()).isEqualTo(paymentId);
+        assertThat(response.getReservationId()).isEqualTo(reservationId);
+        assertThat(response.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(response.getExpiresAt()).isEqualTo(order.getExpiresAt());
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getItems().get(0).getProductId()).isEqualTo(PRODUCT_1);
+    }
+
+    @Test
     void getAllOrdersReturnsOrderEntriesWithPaymentAndItems() {
         UUID orderId = UUID.randomUUID();
         UUID paymentId = UUID.randomUUID();

@@ -1,11 +1,13 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Boxes, CheckCircle2, ClipboardList, CreditCard, PackagePlus, RefreshCw, ShoppingCart, Store, XCircle } from "lucide-react";
+import { Boxes, CheckCircle2, ClipboardList, PackagePlus, RefreshCw, ShoppingCart, Store, XCircle } from "lucide-react";
 import { Metric } from "./components/Status";
 import { request } from "./lib/api";
 import { messageFrom } from "./lib/format";
 import { CheckoutPage } from "./pages/CheckoutPage";
 import { CustomerPage } from "./pages/CustomerPage";
+import { OrderDetailPage } from "./pages/OrderDetailPage";
+import { PaymentPage } from "./pages/PaymentPage";
 import { SellerPage } from "./pages/SellerPage";
 import type { Category, InventoryItem, OrderEntry, OrderForm, OrderResult, Page, PaymentForm, Product, ProductForm, Toast } from "./types";
 import "./styles.css";
@@ -69,7 +71,7 @@ function App() {
   }, [cart, productById]);
 
   const cartTotal = cartLines.reduce((sum, line) => sum + Number(line.product.price) * line.quantity, 0);
-  const currentOrder = safeOrders.find((order) => order.id === (lastOrder?.orderId || currentOrderId));
+  const currentOrder = safeOrders.find((order) => order.id === (lastOrder?.orderId || currentOrderId || paymentForm.orderId));
 
   useEffect(() => {
     void refreshAll();
@@ -82,7 +84,7 @@ function App() {
   }, [toast]);
 
   useEffect(() => {
-    if (page !== "checkout") return;
+    if (page !== "checkout" && page !== "payment" && page !== "orderDetail") return;
 
     const orderId = lastOrder?.orderId || currentOrderId || paymentForm.orderId;
     if (!orderId) return;
@@ -201,28 +203,36 @@ function App() {
     event?.preventDefault();
     const orderId = currentOrderId || lastOrder?.orderId || paymentForm.orderId;
     if (!orderId) {
-      setToast({ tone: "error", text: "Enter an order UUID" });
+      setToast({ tone: "error", text: "Select an order first" });
       return;
     }
 
     await runAction("Order loaded", async () => {
-      const result = await request<OrderResult>(`/api/orders/${orderId}`);
-      setLastOrder(result);
-      setCurrentOrderId(result.orderId);
-      setPaymentForm((form) => ({ ...form, orderId: result.orderId, paymentId: result.paymentId || form.paymentId }));
+      const result = await request<OrderEntry>(`/api/orders/${orderId}`);
+      upsertOrder(result);
+      setLastOrder(toOrderResult(result));
+      setCurrentOrderId(result.id);
+      setPaymentForm((form) => ({ ...form, orderId: result.id, paymentId: result.paymentId || form.paymentId }));
       await refreshAll();
     });
   }
 
   async function fetchOrderStatus(orderId: string) {
     try {
-      const result = await request<OrderResult>(`/api/orders/${orderId}`);
-      setLastOrder(result);
-      setCurrentOrderId(result.orderId);
-      setPaymentForm((form) => ({ ...form, orderId: result.orderId, paymentId: result.paymentId || form.paymentId }));
+      const result = await request<OrderEntry>(`/api/orders/${orderId}`);
+      upsertOrder(result);
+      setLastOrder(toOrderResult(result));
+      setCurrentOrderId(result.id);
+      setPaymentForm((form) => ({ ...form, orderId: result.id, paymentId: result.paymentId || form.paymentId }));
     } catch {
       // Keep the existing checkout state if the backend is still creating the saga state.
     }
+  }
+
+  async function openOrder(orderId: string) {
+    setPage("orderDetail");
+    setCurrentOrderId(orderId);
+    await fetchOrderStatus(orderId);
   }
 
   async function cancelOrder(orderId = lastOrder?.orderId || currentOrderId || paymentForm.orderId) {
@@ -302,6 +312,33 @@ function App() {
     setCart({});
   }
 
+  function goPayment() {
+    const orderId = lastOrder?.orderId || currentOrderId || paymentForm.orderId;
+    if (orderId) {
+      void fetchOrderStatus(orderId);
+    }
+    setPage("payment");
+  }
+
+  function toOrderResult(order: OrderEntry): OrderResult {
+    return {
+      orderId: order.id,
+      paymentId: order.paymentId,
+      reservationId: order.reservationId,
+      status: order.status,
+      expiresAt: order.expiresAt,
+      expiresInSeconds: order.expiresInSeconds
+    };
+  }
+
+  function upsertOrder(order: OrderEntry) {
+    setOrders((current) => {
+      const safeCurrent = Array.isArray(current) ? current : [];
+      const exists = safeCurrent.some((item) => item.id === order.id);
+      return exists ? safeCurrent.map((item) => (item.id === order.id ? order : item)) : [order, ...safeCurrent];
+    });
+  }
+
   return (
     <main>
       <header className="app-header">
@@ -310,17 +347,13 @@ function App() {
             <Store size={16} />
             TechStore
           </div>
-          <h1>{page === "seller" ? "Seller console" : page === "checkout" ? "Checkout" : "Customer store"}</h1>
+          <h1>{page === "seller" ? "Seller console" : page === "checkout" ? "Checkout" : page === "payment" ? "Payment" : page === "orderDetail" ? "Order details" : "Customer store"}</h1>
         </div>
         <div className="header-actions">
           <nav className="page-tabs" aria-label="Primary">
             <button className={page === "customer" ? "active" : ""} onClick={() => setPage("customer")}>
               <ShoppingCart size={17} />
               Customer
-            </button>
-            <button className={page === "checkout" ? "active" : ""} onClick={() => setPage("checkout")} disabled={!cartLines.length && !lastOrder}>
-              <CreditCard size={17} />
-              Checkout
             </button>
             <button className={page === "seller" ? "active" : ""} onClick={() => setPage("seller")}>
               <Store size={17} />
@@ -347,14 +380,17 @@ function App() {
           cartTotal={cartTotal}
           filteredCatalog={filteredCatalog}
           inventoryByProduct={inventoryByProduct}
+          orders={safeOrders}
           selectedCategory={selectedCategory}
           query={query}
           onAddToCart={addToCart}
+          onCancelOrder={cancelOrder}
           onCategoryChange={setSelectedCategory}
           onCheckout={() => setPage("checkout")}
           onQueryChange={setQuery}
           onRemoveFromCart={removeFromCart}
           onSetCartQuantity={setCartQuantity}
+          onViewOrder={(orderId) => void openOrder(orderId)}
         />
       )}
 
@@ -372,13 +408,34 @@ function App() {
           onCancelOrder={cancelOrder}
           onCreateOrder={createOrder}
           onHome={goHome}
-          onPaymentFormChange={setPaymentForm}
+          onPaymentPage={goPayment}
           onRemoveFromCart={removeFromCart}
           onSetCartQuantity={setCartQuantity}
           onSetCurrentOrderId={setCurrentOrderId}
           onSetOrderForm={setOrderForm}
-          onSubmitPayment={submitPayment}
           onViewOrder={viewOrder}
+        />
+      )}
+
+      {page === "payment" && (
+        <PaymentPage
+          currentOrder={currentOrder}
+          lastOrder={lastOrder}
+          paymentForm={paymentForm}
+          productById={productById}
+          onHome={goHome}
+          onPaymentFormChange={setPaymentForm}
+          onSubmitPayment={submitPayment}
+        />
+      )}
+
+      {page === "orderDetail" && (
+        <OrderDetailPage
+          order={currentOrder}
+          productById={productById}
+          onCancelOrder={cancelOrder}
+          onHome={goHome}
+          onPaymentPage={goPayment}
         />
       )}
 
@@ -387,18 +444,14 @@ function App() {
           filteredCatalog={filteredCatalog}
           inventoryAdjustments={inventoryAdjustments}
           inventoryByProduct={inventoryByProduct}
-          isLoading={isLoading}
-          orders={safeOrders}
           productForm={productForm}
           query={query}
           selectedCategory={selectedCategory}
           onAddInventory={addInventory}
-          onCancelOrder={cancelOrder}
           onCategoryChange={setSelectedCategory}
           onCreateProduct={createProduct}
           onProductFormChange={setProductForm}
           onQueryChange={setQuery}
-          onRefresh={refreshAll}
           onSetInventoryAdjustments={setInventoryAdjustments}
         />
       )}

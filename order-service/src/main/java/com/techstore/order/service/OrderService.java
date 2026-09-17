@@ -22,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -114,6 +115,7 @@ public class OrderService {
                 .reservationId(order.getReservationId())
                 .status(order.getOrderStatus())
                 .expiresAt(order.getExpiresAt())
+                .expiresInSeconds(expiresInSeconds(order.getExpiresAt()))
                 .build();
     }
 
@@ -306,6 +308,7 @@ public class OrderService {
                 .reservationId(order.getReservationId())
                 .status(order.getOrderStatus())
                 .expiresAt(order.getExpiresAt())
+                .expiresInSeconds(expiresInSeconds(order.getExpiresAt()))
                 .build();
 
     }
@@ -466,6 +469,7 @@ public class OrderService {
                     .reservationId(entity.getReservationId())
                     .status(entity.getOrderStatus())
                     .expiresAt(entity.getExpiresAt())
+                    .expiresInSeconds(expiresInSeconds(entity.getExpiresAt()))
                     .build();
         }
 
@@ -476,6 +480,7 @@ public class OrderService {
                     .reservationId(entity.getReservationId())
                     .status(entity.getOrderStatus())
                     .expiresAt(entity.getExpiresAt())
+                    .expiresInSeconds(expiresInSeconds(entity.getExpiresAt()))
                     .build();
         }
 
@@ -511,6 +516,7 @@ public class OrderService {
                 .reservationId(entity.getReservationId())
                 .status(entity.getOrderStatus())
                 .expiresAt(entity.getExpiresAt())
+                .expiresInSeconds(expiresInSeconds(entity.getExpiresAt()))
                 .build();
     }
 
@@ -873,19 +879,13 @@ public class OrderService {
         );
     }
 
-    public ReservationStatusResponse getOrderById(UUID id){
+    public OrderResponse getOrderById(UUID id){
         OrderEntity entity = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException(
                         "unable to find order" + id
                 ));
 
-        return ReservationStatusResponse.builder()
-                .orderId(entity.getId())
-                .paymentId(entity.getPaymentID())
-                .reservationId(entity.getReservationId())
-                .status(entity.getOrderStatus())
-                .expiresAt(entity.getExpiresAt())
-                .build();
+        return toOrderResponse(entity);
     }
 
 
@@ -912,6 +912,7 @@ public class OrderService {
                 .totalAmount(order.getTotalAmount())
                 .createdAt(order.getCreatedAt())
                 .expiresAt(order.getExpiresAt())
+                .expiresInSeconds(expiresInSeconds(order.getExpiresAt()))
                 .items(order.getItems()
                         .stream()
                         .map(item -> OrderItemResponse.builder()
@@ -922,5 +923,13 @@ public class OrderService {
                                 .build())
                         .toList())
                 .build();
+    }
+
+    private Long expiresInSeconds(LocalDateTime expiresAt) {
+        if (expiresAt == null) {
+            return null;
+        }
+
+        return Math.max(0L, Duration.between(LocalDateTime.now(), expiresAt).getSeconds());
     }
 }

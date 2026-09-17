@@ -37,7 +37,7 @@ public class OrderController {
 
 
     @GetMapping("/{id}")
-    public ReservationStatusResponse getOrderById(@PathVariable UUID id) {
+    public OrderResponse getOrderById(@PathVariable UUID id) {
         return orderService.getOrderById(id);
 
     }
