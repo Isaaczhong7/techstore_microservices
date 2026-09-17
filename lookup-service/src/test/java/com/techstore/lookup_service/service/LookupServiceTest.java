@@ -37,6 +37,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class LookupServiceTest {
+    private static final UUID PRODUCT_1 = UUID.fromString("00000000-0000-0000-0000-000000000010");
+    private static final UUID MISSING_PRODUCT = UUID.fromString("00000000-0000-0000-0000-000000000404");
 
     private ProductLookupRepository productLookupRepository;
     private RedisTemplate<String, ProductItem> redisTemplate;
@@ -63,16 +65,16 @@ class LookupServiceTest {
 
     @Test
     void saveOrUpdateProductSnapshotCreatesNewSnapshotWithProductAndInventoryState() {
-        when(productLookupRepository.findById(10L)).thenReturn(Optional.empty());
+        when(productLookupRepository.findById(PRODUCT_1)).thenReturn(Optional.empty());
 
         lookupService.saveOrUpdateProductSnapshot(
-                productResponse(10L, "Laptop", 2L),
-                inventoryResponse(10L, 8L, 1L, 3L)
+                productResponse(PRODUCT_1, "Laptop", 2L),
+                inventoryResponse(PRODUCT_1, 8L, 1L, 3L)
         );
 
         var saved = org.mockito.ArgumentCaptor.forClass(ProductLookupEntity.class);
         verify(productLookupRepository).save(saved.capture());
-        assertThat(saved.getValue().getProductId()).isEqualTo(10L);
+        assertThat(saved.getValue().getProductId()).isEqualTo(PRODUCT_1);
         assertThat(saved.getValue().getProductName()).isEqualTo("Laptop");
         assertThat(saved.getValue().getProductVersion()).isEqualTo(2L);
         assertThat(saved.getValue().getQuantity()).isEqualTo(8L);
@@ -82,14 +84,14 @@ class LookupServiceTest {
 
     @Test
     void saveOrUpdateProductSnapshotIgnoresOlderVersions() {
-        ProductLookupEntity existing = entity(10L, "Current", 5L, 4L);
+        ProductLookupEntity existing = entity(PRODUCT_1, "Current", 5L, 4L);
         existing.setQuantity(10L);
         existing.setItemSold(1L);
-        when(productLookupRepository.findById(10L)).thenReturn(Optional.of(existing));
+        when(productLookupRepository.findById(PRODUCT_1)).thenReturn(Optional.of(existing));
 
         lookupService.saveOrUpdateProductSnapshot(
-                productResponse(10L, "Old", 3L),
-                inventoryResponse(10L, 99L, 99L, 2L)
+                productResponse(PRODUCT_1, "Old", 3L),
+                inventoryResponse(PRODUCT_1, 99L, 99L, 2L)
         );
 
         assertThat(existing.getProductName()).isEqualTo("Current");
@@ -115,7 +117,7 @@ class LookupServiceTest {
 
     @Test
     void fetchItemsMapsRepositoryPageToProductItems() {
-        ProductLookupEntity entity = entity(10L, "Laptop", 2L, 3L);
+        ProductLookupEntity entity = entity(PRODUCT_1, "Laptop", 2L, 3L);
         entity.setQuantity(8L);
         entity.setItemSold(1L);
         when(productLookupRepository.findAll(any(Pageable.class)))
@@ -125,15 +127,15 @@ class LookupServiceTest {
 
         assertThat(page.getContent())
                 .extracting(ProductItem::getProductId, ProductItem::getProductName, ProductItem::getQuantity, ProductItem::getItemSold)
-                .containsExactly(org.assertj.core.groups.Tuple.tuple(10L, "Laptop", 8L, 1L));
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(PRODUCT_1, "Laptop", 8L, 1L));
     }
 
     @Test
     void getProductReturnsCachedProductWithoutRepositoryLookup() {
-        ProductItem cached = productItem(10L, "Cached");
-        when(valueOperations.get("product:10")).thenReturn(cached);
+        ProductItem cached = productItem(PRODUCT_1, "Cached");
+        when(valueOperations.get("product:" + PRODUCT_1)).thenReturn(cached);
 
-        ProductItem product = lookupService.getProduct(10L);
+        ProductItem product = lookupService.getProduct(PRODUCT_1);
 
         assertThat(product).isSameAs(cached);
         verifyNoInteractions(productLookupRepository);
@@ -142,27 +144,27 @@ class LookupServiceTest {
 
     @Test
     void getProductLoadsFromRepositoryAndCachesOnMiss() {
-        ProductLookupEntity entity = entity(10L, "Laptop", 2L, 3L);
+        ProductLookupEntity entity = entity(PRODUCT_1, "Laptop", 2L, 3L);
         entity.setQuantity(8L);
         entity.setItemSold(1L);
-        when(valueOperations.get("product:10")).thenReturn(null);
-        when(productLookupRepository.findById(10L)).thenReturn(Optional.of(entity));
+        when(valueOperations.get("product:" + PRODUCT_1)).thenReturn(null);
+        when(productLookupRepository.findById(PRODUCT_1)).thenReturn(Optional.of(entity));
 
-        ProductItem product = lookupService.getProduct(10L);
+        ProductItem product = lookupService.getProduct(PRODUCT_1);
 
         assertThat(product.getProductName()).isEqualTo("Laptop");
         assertThat(product.getQuantity()).isEqualTo(8L);
-        verify(valueOperations).set(eq("product:10"), eq(product), eq(Duration.ofMinutes(10)));
+        verify(valueOperations).set(eq("product:" + PRODUCT_1), eq(product), eq(Duration.ofMinutes(10)));
     }
 
     @Test
     void getProductThrowsWhenProductDoesNotExist() {
-        when(valueOperations.get("product:404")).thenReturn(null);
-        when(productLookupRepository.findById(404L)).thenReturn(Optional.empty());
+        when(valueOperations.get("product:" + MISSING_PRODUCT)).thenReturn(null);
+        when(productLookupRepository.findById(MISSING_PRODUCT)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> lookupService.getProduct(404L))
+        assertThatThrownBy(() -> lookupService.getProduct(MISSING_PRODUCT))
                 .isInstanceOf(ItemInvalidException.class)
-                .hasMessage("Unable to find product: 404");
+                .hasMessage("Unable to find product: " + MISSING_PRODUCT);
     }
 
     @Test
@@ -170,7 +172,7 @@ class LookupServiceTest {
         UUID eventId = UUID.randomUUID();
         when(processedEventRepository.tryMarkProcessed(eventId, "INVENTORY_ITEM_COMPLETED")).thenReturn(0);
 
-        lookupService.inventoryItemUpdate(new InventoryItemCompleted(eventId, 10L, 2L, 8L, 3L));
+        lookupService.inventoryItemUpdate(new InventoryItemCompleted(eventId, PRODUCT_1, 2L, 8L, 3L));
 
         verifyNoInteractions(productLookupRepository);
         verify(redisTemplate, never()).delete(any(String.class));
@@ -180,13 +182,13 @@ class LookupServiceTest {
     void inventoryItemUpdateUpsertsAndDeletesCacheAfterCommit() {
         UUID eventId = UUID.randomUUID();
         when(processedEventRepository.tryMarkProcessed(eventId, "INVENTORY_ITEM_COMPLETED")).thenReturn(1);
-        when(productLookupRepository.upsertInventory(10L, 8L, 2L, 3L)).thenReturn(1);
+        when(productLookupRepository.upsertInventory(PRODUCT_1, 8L, 2L, 3L)).thenReturn(1);
 
         runWithTransactionSynchronization(() ->
-                lookupService.inventoryItemUpdate(new InventoryItemCompleted(eventId, 10L, 2L, 8L, 3L))
+                lookupService.inventoryItemUpdate(new InventoryItemCompleted(eventId, PRODUCT_1, 2L, 8L, 3L))
         );
 
-        verify(redisTemplate).delete("product:10");
+        verify(redisTemplate).delete("product:" + PRODUCT_1);
     }
 
     @Test
@@ -194,7 +196,7 @@ class LookupServiceTest {
         UUID eventId = UUID.randomUUID();
         when(processedEventRepository.tryMarkProcessed(eventId, "PRODUCT_ITEM_COMPLETED")).thenReturn(1);
         when(productLookupRepository.upsertProduct(
-                eq(10L),
+                eq(PRODUCT_1),
                 eq("Laptop"),
                 eq("Fast"),
                 eq("LAPTOP"),
@@ -206,7 +208,7 @@ class LookupServiceTest {
         runWithTransactionSynchronization(() ->
                 lookupService.productItemUpdate(new ProductItemCompleted(
                         eventId,
-                        10L,
+                        PRODUCT_1,
                         "Laptop",
                         "Fast",
                         com.techstore.kafka.product.ItemCategory.LAPTOP,
@@ -216,7 +218,7 @@ class LookupServiceTest {
                 ))
         );
 
-        verify(redisTemplate).delete("product:10");
+        verify(redisTemplate).delete("product:" + PRODUCT_1);
     }
 
     @Test
@@ -227,7 +229,7 @@ class LookupServiceTest {
 
         lookupService.productItemUpdate(new ProductItemCompleted(
                 eventId,
-                10L,
+                PRODUCT_1,
                 "Laptop",
                 "Fast",
                 com.techstore.kafka.product.ItemCategory.LAPTOP,
@@ -250,7 +252,7 @@ class LookupServiceTest {
         }
     }
 
-    private static ProductItemResponse productResponse(Long productId, String name, Long version) {
+    private static ProductItemResponse productResponse(UUID productId, String name, Long version) {
         return ProductItemResponse.builder()
                 .productId(productId)
                 .productName(name)
@@ -262,7 +264,7 @@ class LookupServiceTest {
                 .build();
     }
 
-    private static InventoryItemResponse inventoryResponse(Long productId, Long quantity, Long itemSold, Long version) {
+    private static InventoryItemResponse inventoryResponse(UUID productId, Long quantity, Long itemSold, Long version) {
         return InventoryItemResponse.builder()
                 .productId(productId)
                 .quantity(quantity)
@@ -271,7 +273,7 @@ class LookupServiceTest {
                 .build();
     }
 
-    private static ProductLookupEntity entity(Long productId, String name, Long productVersion, Long inventoryVersion) {
+    private static ProductLookupEntity entity(UUID productId, String name, Long productVersion, Long inventoryVersion) {
         return ProductLookupEntity.builder()
                 .productId(productId)
                 .productName(name)
@@ -284,7 +286,7 @@ class LookupServiceTest {
                 .build();
     }
 
-    private static ProductItem productItem(Long productId, String name) {
+    private static ProductItem productItem(UUID productId, String name) {
         return ProductItem.builder()
                 .productId(productId)
                 .productName(name)

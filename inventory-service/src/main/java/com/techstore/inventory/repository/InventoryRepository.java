@@ -11,7 +11,7 @@ import java.util.UUID;
 
 
 public interface InventoryRepository extends JpaRepository<InventoryEntity, UUID> {
-    Optional<InventoryEntity> findByProductId(Long productId);
+    Optional<InventoryEntity> findByProductId(UUID productId);
 
     @Modifying(
 
@@ -25,7 +25,7 @@ public interface InventoryRepository extends JpaRepository<InventoryEntity, UUID
           AND (i.quantity - i.reservedQuantity) >= :quantity
     """)
     int reserveIfAvailable(
-            @Param("productId") Long productId,
+            @Param("productId") UUID productId,
             @Param("quantity") Long quantity
     );
 
@@ -38,7 +38,7 @@ public interface InventoryRepository extends JpaRepository<InventoryEntity, UUID
           AND i.reservedQuantity >= :quantity
     """)
     int releaseReserved(
-            @Param("productId") Long productId,
+            @Param("productId") UUID productId,
             @Param("quantity") Long quantity
     );
 
@@ -55,7 +55,7 @@ public interface InventoryRepository extends JpaRepository<InventoryEntity, UUID
           AND i.quantity >= :quantity
     """)
     int confirmReserved(
-            @Param("productId") Long productId,
+            @Param("productId") UUID productId,
             @Param("quantity") Long quantity
     );
 
@@ -69,7 +69,7 @@ public interface InventoryRepository extends JpaRepository<InventoryEntity, UUID
         AND i.itemSold >= :quantity
     """)
     int reverseQuantity(
-            @Param("productId") Long productId,
+            @Param("productId") UUID productId,
             @Param("quantity") Long quantity
     );
 
@@ -81,7 +81,7 @@ public interface InventoryRepository extends JpaRepository<InventoryEntity, UUID
         WHERE i.productId = :productId
     """)
     int addQuantity(
-            @Param("productId") Long productId,
+            @Param("productId") UUID productId,
             @Param("quantity") Long quantity
     );
 

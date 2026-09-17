@@ -7,12 +7,14 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class ReservationItemResponse {
-    private Long productId;
+    private UUID productId;
     private Long quantity;
     private ReservationItemStatus status;
 }

@@ -3,6 +3,8 @@ package com.techstore.inventory.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.UUID;
+
 @Entity
 @Table(name = "inventory_reservation_items")
 @Getter
@@ -17,7 +19,7 @@ public class InventoryReservationItemEntity {
     private Long id;
 
     @Column(nullable = false)
-    private Long productId;
+    private UUID productId;
 
     @Column(nullable = false)
     private Long quantity;

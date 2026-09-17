@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
@@ -14,5 +15,8 @@ import java.util.UUID;
 @NoArgsConstructor
 public class ReservationStatusResponse {
     private UUID orderId;
+    private UUID paymentId;
+    private UUID reservationId;
     private OrderStatus status;
+    private LocalDateTime expiresAt;
 }

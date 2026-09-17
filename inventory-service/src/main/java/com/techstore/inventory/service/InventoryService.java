@@ -52,7 +52,7 @@ public class InventoryService {
     }
 
     @Transactional
-    public void updateSpecificProduct(Long productId, UpdateProductRequest request) {
+    public void updateSpecificProduct(UUID productId, UpdateProductRequest request) {
 
         if (request.getQuantity() == null || request.getQuantity() <= 0) {
             throw new IllegalArgumentException(
@@ -164,7 +164,7 @@ public class InventoryService {
 
 
 
-    private ReservationItemStatus reserveItem(Long productId, Long quantity) {
+    private ReservationItemStatus reserveItem(UUID productId, Long quantity) {
         validateQuantity(quantity);
 
         int updatedRows =
@@ -252,7 +252,7 @@ public class InventoryService {
     }
 
     @Transactional
-    public void releaseItem(Long productId, Long quantity) {
+    public void releaseItem(UUID productId, Long quantity) {
 
         validateQuantity(quantity);
 
@@ -466,7 +466,7 @@ public class InventoryService {
     }
 
 
-    public void getInventoryByProductId(Long productId) {
+    public void getInventoryByProductId(UUID productId) {
         InventoryEntity entry = inventoryRepository.findByProductId(productId)
                 .orElseThrow(() -> new ProductIdNotFoundException(
                         "Unable to find product id: " + productId

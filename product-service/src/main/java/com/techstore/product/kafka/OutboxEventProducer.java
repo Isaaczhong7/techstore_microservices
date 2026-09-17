@@ -3,7 +3,6 @@ package com.techstore.product.kafka;
 import com.techstore.kafka.product.ProductCheckCompleted;
 import com.techstore.kafka.product.ProductEntryCompleted;
 import com.techstore.kafka.product.ProductItemCompleted;
-import com.techstore.product.dto.ProductEntry;
 import com.techstore.product.dto.ProductItemResponse;
 import com.techstore.product.entity.OutboxStatus;
 import com.techstore.product.dto.QueryProductsResponse;
@@ -107,7 +106,7 @@ public class OutboxEventProducer {
                 );
             }
             List<ProductEntryCompleted> completedEntries = new ArrayList<>();
-            for(ProductEntry entry: payload.getProductList()){
+            for(ProductItemResponse entry: payload.getProductList()){
 
                 ProductEntryCompleted completedEntry = ProductEntryCompleted.newBuilder()
                         .setProductId(entry.getProductId())

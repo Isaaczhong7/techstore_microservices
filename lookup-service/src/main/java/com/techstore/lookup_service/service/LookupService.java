@@ -53,7 +53,7 @@ public class LookupService {
         List<ProductItemResponse> products = fetchProductSnapshot();
         List<InventoryItemResponse> inventory = fetchInventorySnapshot();
 
-        Map<Long, InventoryItemResponse> inventoryByProductId =
+        Map<UUID, InventoryItemResponse> inventoryByProductId =
                 inventory.stream()
                         .collect(Collectors.toMap(
                                 InventoryItemResponse::getProductId,
@@ -236,7 +236,7 @@ public class LookupService {
 
 
     @Transactional
-    public ProductItem getProduct(Long productId) {
+    public ProductItem getProduct(UUID productId) {
 
         String key = PRODUCT_CACHE_PREFIX + productId;
 
@@ -345,7 +345,7 @@ public class LookupService {
         }
     }
 
-    private void deleteRedisAfterCommit(Long productId) {
+    private void deleteRedisAfterCommit(UUID productId) {
 
         TransactionSynchronizationManager.registerSynchronization(
                 new TransactionSynchronization() {

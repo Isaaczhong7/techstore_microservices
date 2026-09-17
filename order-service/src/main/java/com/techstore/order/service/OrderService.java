@@ -110,7 +110,10 @@ public class OrderService {
 
         return ReservationStatusResponse.builder()
                 .orderId(order.getId())
+                .paymentId(order.getPaymentID())
+                .reservationId(order.getReservationId())
                 .status(order.getOrderStatus())
+                .expiresAt(order.getExpiresAt())
                 .build();
     }
 
@@ -141,7 +144,7 @@ public class OrderService {
             return;
         }
 
-        Map<Long, com.techstore.kafka.product.ProductEntryCompleted> productsById =
+        Map<UUID, com.techstore.kafka.product.ProductEntryCompleted> productsById =
                 response.getProductList()
                         .stream()
                         .collect(Collectors.toMap(
@@ -299,7 +302,10 @@ public class OrderService {
 
         return ReservationStatusResponse.builder()
                 .orderId(order.getId())
+                .paymentId(order.getPaymentID())
+                .reservationId(order.getReservationId())
                 .status(order.getOrderStatus())
+                .expiresAt(order.getExpiresAt())
                 .build();
 
     }
@@ -456,14 +462,20 @@ public class OrderService {
         if (entity.getOrderStatus() == OrderStatus.CANCELLED) {
             return ReservationStatusResponse.builder()
                     .orderId(entity.getId())
+                    .paymentId(entity.getPaymentID())
+                    .reservationId(entity.getReservationId())
                     .status(entity.getOrderStatus())
+                    .expiresAt(entity.getExpiresAt())
                     .build();
         }
 
         if (entity.getOrderStatus() == OrderStatus.CANCELLING) {
             return ReservationStatusResponse.builder()
                     .orderId(entity.getId())
+                    .paymentId(entity.getPaymentID())
+                    .reservationId(entity.getReservationId())
                     .status(entity.getOrderStatus())
+                    .expiresAt(entity.getExpiresAt())
                     .build();
         }
 
@@ -495,7 +507,10 @@ public class OrderService {
 
         return ReservationStatusResponse.builder()
                 .orderId(entity.getId())
+                .paymentId(entity.getPaymentID())
+                .reservationId(entity.getReservationId())
                 .status(entity.getOrderStatus())
+                .expiresAt(entity.getExpiresAt())
                 .build();
     }
 
@@ -866,7 +881,10 @@ public class OrderService {
 
         return ReservationStatusResponse.builder()
                 .orderId(entity.getId())
+                .paymentId(entity.getPaymentID())
+                .reservationId(entity.getReservationId())
                 .status(entity.getOrderStatus())
+                .expiresAt(entity.getExpiresAt())
                 .build();
     }
 
@@ -877,13 +895,32 @@ public class OrderService {
 
         return orderRepository.findAll()
                 .stream()
-                .map(order -> OrderResponse.builder()
-                        .id(order.getId())
-                        .customerId(order.getCustomerId())
-                        .email(order.getEmail())
-                        .customerType(order.getCustomerType())
-                        .status(order.getOrderStatus())
-                        .build())
+                .map(this::toOrderResponse)
                 .toList();
+    }
+
+    private OrderResponse toOrderResponse(OrderEntity order) {
+        return OrderResponse.builder()
+                .id(order.getId())
+                .reservationId(order.getReservationId())
+                .paymentId(order.getPaymentID())
+                .customerId(order.getCustomerId())
+                .email(order.getEmail())
+                .customerType(order.getCustomerType())
+                .status(order.getOrderStatus())
+                .paymentStatus(order.getPaymentStatus())
+                .totalAmount(order.getTotalAmount())
+                .createdAt(order.getCreatedAt())
+                .expiresAt(order.getExpiresAt())
+                .items(order.getItems()
+                        .stream()
+                        .map(item -> OrderItemResponse.builder()
+                                .productId(item.getProductId())
+                                .quantity(item.getQuantity())
+                                .unitPrice(item.getUnitPrice())
+                                .status(item.getStatus())
+                                .build())
+                        .toList())
+                .build();
     }
 }

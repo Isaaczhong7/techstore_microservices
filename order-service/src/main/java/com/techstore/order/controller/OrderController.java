@@ -44,6 +44,6 @@ public class OrderController {
 
     @GetMapping
     public List<OrderResponse> getAllOrders() {
-        return null;
+        return orderService.getAllOrders();
     }
 }

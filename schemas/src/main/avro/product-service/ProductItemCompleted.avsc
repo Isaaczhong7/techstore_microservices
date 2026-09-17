@@ -12,7 +12,10 @@
     },
     {
       "name": "productId",
-      "type": "long"
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
     },
     {
       "name": "productName",

@@ -1,179 +1,75 @@
-import React, { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import {
-  Boxes,
-  CheckCircle2,
-  ClipboardList,
-  CreditCard,
-  PackagePlus,
-  RefreshCw,
-  Search,
-  ShoppingCart,
-  SlidersHorizontal,
-  Store,
-  XCircle
-} from "lucide-react";
+import { Boxes, CheckCircle2, ClipboardList, CreditCard, PackagePlus, RefreshCw, ShoppingCart, Store, XCircle } from "lucide-react";
+import { Metric } from "./components/Status";
+import { request } from "./lib/api";
+import { messageFrom } from "./lib/format";
+import { CheckoutPage } from "./pages/CheckoutPage";
+import { CustomerPage } from "./pages/CustomerPage";
+import { SellerPage } from "./pages/SellerPage";
+import type { Category, InventoryItem, OrderEntry, OrderForm, OrderResult, Page, PaymentForm, Product, ProductForm, Toast } from "./types";
 import "./styles.css";
 
-type Category =
-  | "LAPTOP"
-  | "DESKTOP"
-  | "SMARTPHONE"
-  | "TABLET"
-  | "MONITOR"
-  | "KEYBOARD"
-  | "MOUSE"
-  | "HEADPHONES"
-  | "SPEAKER"
-  | "CAMERA"
-  | "SMARTWATCH"
-  | "STORAGE"
-  | "MEMORY"
-  | "PROCESSOR"
-  | "GRAPHICS_CARD"
-  | "MOTHERBOARD"
-  | "POWER_SUPPLY"
-  | "NETWORKING"
-  | "ACCESSORY"
-  | "OTHER";
-
-type Product = {
-  productId: number;
-  productName: string;
-  description: string;
-  category: Category;
-  price: number;
-  active: boolean;
-  version?: number;
-  quantity?: number;
-  itemSold?: number;
-};
-
-type InventoryItem = {
-  productId: number;
-  quantity: number;
-  itemSold: number;
-  version: number;
-};
-
-type OrderStatus = "PENDING" | "PARTIAL" | "CONFIRMED" | "CANCELLED" | "EXPIRED" | "CONFIRMING" | "CANCELLING";
-
-type OrderResult = {
-  orderId: string;
-  status: OrderStatus;
-};
-
-type Toast = {
-  tone: "success" | "error" | "info";
-  text: string;
-};
-
-const categories: Category[] = [
-  "LAPTOP",
-  "DESKTOP",
-  "SMARTPHONE",
-  "TABLET",
-  "MONITOR",
-  "KEYBOARD",
-  "MOUSE",
-  "HEADPHONES",
-  "SPEAKER",
-  "CAMERA",
-  "SMARTWATCH",
-  "STORAGE",
-  "MEMORY",
-  "PROCESSOR",
-  "GRAPHICS_CARD",
-  "MOTHERBOARD",
-  "POWER_SUPPLY",
-  "NETWORKING",
-  "ACCESSORY",
-  "OTHER"
-];
-
-const currency = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD"
-});
-
-async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers
-    },
-    ...options
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `${response.status} ${response.statusText}`);
-  }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  const text = await response.text();
-  return text ? (JSON.parse(text) as T) : (undefined as T);
-}
-
 function App() {
+  const [page, setPage] = useState<Page>("customer");
   const [catalog, setCatalog] = useState<Product[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [cart, setCart] = useState<Record<number, number>>({});
+  const [orders, setOrders] = useState<OrderEntry[]>([]);
+  const [cart, setCart] = useState<Record<string, number>>({});
+  const [inventoryAdjustments, setInventoryAdjustments] = useState<Record<string, string>>({});
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<"ALL" | Category>("ALL");
   const [lastOrder, setLastOrder] = useState<OrderResult | null>(null);
+  const [currentOrderId, setCurrentOrderId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
-  const [productForm, setProductForm] = useState({
+  const [productForm, setProductForm] = useState<ProductForm>({
     productName: "",
     description: "",
-    category: "LAPTOP" as Category,
+    category: "LAPTOP",
     price: "999.00",
-    active: true
+    active: true,
+    initialStock: "10"
   });
-  const [inventoryForm, setInventoryForm] = useState({
-    productId: "",
-    quantity: "10"
-  });
-  const [orderForm, setOrderForm] = useState({
+  const [orderForm, setOrderForm] = useState<OrderForm>({
     email: "guest@techstore.local",
-    customerType: "GUEST" as "GUEST" | "MEMBER",
+    customerType: "GUEST",
     customerId: ""
   });
-  const [paymentForm, setPaymentForm] = useState({
+  const [paymentForm, setPaymentForm] = useState<PaymentForm>({
     orderId: "",
     paymentId: "",
     paymentMethodId: "",
     currencyType: "USD"
   });
 
-  const inventoryByProduct = useMemo(
-    () => new Map(inventory.map((item) => [item.productId, item])),
-    [inventory]
-  );
+  const safeInventory = Array.isArray(inventory) ? inventory : [];
+  const safeCatalog = Array.isArray(catalog) ? catalog : [];
+  const safeOrders = Array.isArray(orders) ? orders : [];
+
+  const inventoryByProduct = useMemo(() => new Map(safeInventory.map((item) => [item.productId, item])), [safeInventory]);
+  const productById = useMemo(() => new Map(safeCatalog.map((product) => [product.productId, product])), [safeCatalog]);
 
   const filteredCatalog = useMemo(() => {
-    return catalog.filter((product) => {
+    return safeCatalog.filter((product) => {
       const text = `${product.productName} ${product.description} ${product.category}`.toLowerCase();
       const matchesText = text.includes(query.toLowerCase());
       const matchesCategory = selectedCategory === "ALL" || product.category === selectedCategory;
       return matchesText && matchesCategory;
     });
-  }, [catalog, query, selectedCategory]);
+  }, [safeCatalog, query, selectedCategory]);
 
   const cartLines = useMemo(() => {
     return Object.entries(cart)
       .map(([productId, quantity]) => {
-        const product = catalog.find((item) => item.productId === Number(productId));
+        const product = productById.get(productId);
         return product ? { product, quantity } : null;
       })
       .filter((line): line is { product: Product; quantity: number } => Boolean(line));
-  }, [cart, catalog]);
+  }, [cart, productById]);
 
   const cartTotal = cartLines.reduce((sum, line) => sum + Number(line.product.price) * line.quantity, 0);
+  const currentOrder = safeOrders.find((order) => order.id === (lastOrder?.orderId || currentOrderId));
 
   useEffect(() => {
     void refreshAll();
@@ -185,25 +81,38 @@ function App() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
+  useEffect(() => {
+    if (page !== "checkout") return;
+
+    const orderId = lastOrder?.orderId || currentOrderId || paymentForm.orderId;
+    if (!orderId) return;
+
+    void fetchOrderStatus(orderId);
+    const timer = window.setInterval(() => {
+      void fetchOrderStatus(orderId);
+    }, 5000);
+
+    return () => window.clearInterval(timer);
+  }, [page, lastOrder?.orderId, currentOrderId, paymentForm.orderId]);
+
   async function refreshAll() {
     setIsLoading(true);
     try {
-      const [products, inventoryRows, lookup] = await Promise.allSettled([
+      const [products, inventoryRows, lookup, orderRows] = await Promise.allSettled([
         request<Product[]>("/api/products"),
         request<InventoryItem[]>("/api/inventory"),
-        request<{ content?: Product[] }>("/api/lookup?page=0&size=100")
+        request<{ content?: Product[] }>("/api/lookup?page=0&size=100"),
+        request<OrderEntry[]>("/api/orders")
       ]);
 
-      if (lookup.status === "fulfilled" && lookup.value.content?.length) {
+      if (lookup.status === "fulfilled" && Array.isArray(lookup.value?.content) && lookup.value.content.length) {
         setCatalog(lookup.value.content);
       } else if (products.status === "fulfilled") {
-        setCatalog(products.value);
+        setCatalog(Array.isArray(products.value) ? products.value : []);
       }
 
-      if (inventoryRows.status === "fulfilled") {
-        setInventory(inventoryRows.value);
-      }
-
+      if (inventoryRows.status === "fulfilled") setInventory(Array.isArray(inventoryRows.value) ? inventoryRows.value : []);
+      if (orderRows.status === "fulfilled") setOrders(Array.isArray(orderRows.value) ? orderRows.value : []);
       setToast({ tone: "success", text: "Store data refreshed" });
     } catch (error) {
       setToast({ tone: "error", text: messageFrom(error) });
@@ -215,7 +124,7 @@ function App() {
   async function createProduct(event: FormEvent) {
     event.preventDefault();
     await runAction("Product created", async () => {
-      await request<void>("/api/products", {
+      const created = await request<Product[]>("/api/products", {
         method: "POST",
         body: JSON.stringify({
           items: [
@@ -229,33 +138,33 @@ function App() {
           ]
         })
       });
-      setProductForm((form) => ({ ...form, productName: "", description: "" }));
+
+      const firstProduct = Array.isArray(created) ? created[0] : undefined;
+      const initialStock = Number(productForm.initialStock);
+      if (firstProduct?.productId && initialStock >= 0) {
+        await request<void>("/api/inventory", {
+          method: "POST",
+          body: JSON.stringify([{ productId: firstProduct.productId, quantity: initialStock }])
+        });
+      }
+
+      setProductForm((form) => ({ ...form, productName: "", description: "", initialStock: "10" }));
       await refreshAll();
     });
   }
 
-  async function createInventory(event: FormEvent) {
-    event.preventDefault();
-    await runAction("Inventory seeded", async () => {
-      await request<void>("/api/inventory", {
-        method: "POST",
-        body: JSON.stringify([
-          {
-            productId: Number(inventoryForm.productId),
-            quantity: Number(inventoryForm.quantity)
-          }
-        ])
-      });
-      await refreshAll();
-    });
-  }
+  async function addInventory(productId: string, quantity: number) {
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      setToast({ tone: "error", text: "Inventory quantity must be greater than 0" });
+      return;
+    }
 
-  async function addInventory(productId: number, quantity: number) {
     await runAction("Inventory updated", async () => {
       await request<void>(`/api/inventory/${productId}/update`, {
         method: "PATCH",
         body: JSON.stringify({ quantity })
       });
+      setInventoryAdjustments((current) => ({ ...current, [productId]: "" }));
       await refreshAll();
     });
   }
@@ -281,27 +190,55 @@ function App() {
         })
       });
       setLastOrder(result);
-      setPaymentForm((form) => ({ ...form, orderId: result.orderId }));
+      setCurrentOrderId(result.orderId);
+      setPaymentForm((form) => ({ ...form, orderId: result.orderId, paymentId: result.paymentId || form.paymentId }));
+      await fetchOrderStatus(result.orderId);
+      await refreshAll();
     });
   }
 
-  async function refreshOrder(orderId = lastOrder?.orderId || paymentForm.orderId) {
-    if (!orderId) return;
-    await runAction("Order status refreshed", async () => {
+  async function viewOrder(event?: FormEvent) {
+    event?.preventDefault();
+    const orderId = currentOrderId || lastOrder?.orderId || paymentForm.orderId;
+    if (!orderId) {
+      setToast({ tone: "error", text: "Enter an order UUID" });
+      return;
+    }
+
+    await runAction("Order loaded", async () => {
       const result = await request<OrderResult>(`/api/orders/${orderId}`);
       setLastOrder(result);
+      setCurrentOrderId(result.orderId);
+      setPaymentForm((form) => ({ ...form, orderId: result.orderId, paymentId: result.paymentId || form.paymentId }));
+      await refreshAll();
     });
   }
 
-  async function cancelOrder() {
-    const orderId = lastOrder?.orderId || paymentForm.orderId;
-    if (!orderId) return;
+  async function fetchOrderStatus(orderId: string) {
+    try {
+      const result = await request<OrderResult>(`/api/orders/${orderId}`);
+      setLastOrder(result);
+      setCurrentOrderId(result.orderId);
+      setPaymentForm((form) => ({ ...form, orderId: result.orderId, paymentId: result.paymentId || form.paymentId }));
+    } catch {
+      // Keep the existing checkout state if the backend is still creating the saga state.
+    }
+  }
+
+  async function cancelOrder(orderId = lastOrder?.orderId || currentOrderId || paymentForm.orderId) {
+    if (!orderId) {
+      setToast({ tone: "error", text: "No order selected" });
+      return;
+    }
+
     await runAction("Cancellation requested", async () => {
       const result = await request<OrderResult>("/api/orders/cancel", {
         method: "POST",
         body: JSON.stringify({ orderId })
       });
       setLastOrder(result);
+      setCurrentOrderId(result.orderId);
+      await refreshAll();
     });
   }
 
@@ -318,6 +255,9 @@ function App() {
         })
       });
       setLastOrder(result);
+      setCurrentOrderId(result.orderId);
+      setPaymentForm((form) => ({ ...form, paymentId: result.paymentId || form.paymentId }));
+      await refreshAll();
     });
   }
 
@@ -333,20 +273,33 @@ function App() {
     }
   }
 
-  function addToCart(productId: number) {
+  function addToCart(productId: string) {
     setCart((current) => ({ ...current, [productId]: (current[productId] || 0) + 1 }));
   }
 
-  function setCartQuantity(productId: number, quantity: number) {
+  function setCartQuantity(productId: string, quantity: number) {
     setCart((current) => {
       const next = { ...current };
-      if (quantity <= 0) {
-        delete next[productId];
-      } else {
-        next[productId] = quantity;
-      }
+      if (quantity <= 0) delete next[productId];
+      else next[productId] = quantity;
       return next;
     });
+  }
+
+  function removeFromCart(productId: string) {
+    setCart((current) => {
+      const next = { ...current };
+      delete next[productId];
+      return next;
+    });
+  }
+
+  function goHome() {
+    setPage("customer");
+    setLastOrder(null);
+    setCurrentOrderId("");
+    setPaymentForm((form) => ({ ...form, orderId: "", paymentId: "" }));
+    setCart({});
   }
 
   return (
@@ -355,14 +308,30 @@ function App() {
         <div>
           <div className="eyebrow">
             <Store size={16} />
-            TechStore Console
+            TechStore
           </div>
-          <h1>Commerce operations</h1>
+          <h1>{page === "seller" ? "Seller console" : page === "checkout" ? "Checkout" : "Customer store"}</h1>
         </div>
-        <button className="icon-button text-button" onClick={refreshAll} disabled={isLoading} title="Refresh store data">
-          <RefreshCw size={18} className={isLoading ? "spin" : ""} />
-          Refresh
-        </button>
+        <div className="header-actions">
+          <nav className="page-tabs" aria-label="Primary">
+            <button className={page === "customer" ? "active" : ""} onClick={() => setPage("customer")}>
+              <ShoppingCart size={17} />
+              Customer
+            </button>
+            <button className={page === "checkout" ? "active" : ""} onClick={() => setPage("checkout")} disabled={!cartLines.length && !lastOrder}>
+              <CreditCard size={17} />
+              Checkout
+            </button>
+            <button className={page === "seller" ? "active" : ""} onClick={() => setPage("seller")}>
+              <Store size={17} />
+              Seller
+            </button>
+          </nav>
+          <button className="icon-button text-button" onClick={refreshAll} disabled={isLoading} title="Refresh store data">
+            <RefreshCw size={18} className={isLoading ? "spin" : ""} />
+            Refresh
+          </button>
+        </div>
       </header>
 
       <section className="status-strip">
@@ -372,174 +341,67 @@ function App() {
         <Metric label="Order status" value={lastOrder?.status || "None"} icon={<ClipboardList size={18} />} />
       </section>
 
-      <section className="workspace">
-        <div className="catalog-panel">
-          <div className="panel-header">
-            <h2>Catalog</h2>
-            <div className="filters">
-              <label className="search">
-                <Search size={16} />
-                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search" />
-              </label>
-              <label className="select-wrap">
-                <SlidersHorizontal size={16} />
-                <select value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value as "ALL" | Category)}>
-                  <option value="ALL">All categories</option>
-                  {categories.map((category) => (
-                    <option value={category} key={category}>
-                      {formatEnum(category)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          </div>
+      {page === "customer" && (
+        <CustomerPage
+          cartLines={cartLines}
+          cartTotal={cartTotal}
+          filteredCatalog={filteredCatalog}
+          inventoryByProduct={inventoryByProduct}
+          selectedCategory={selectedCategory}
+          query={query}
+          onAddToCart={addToCart}
+          onCategoryChange={setSelectedCategory}
+          onCheckout={() => setPage("checkout")}
+          onQueryChange={setQuery}
+          onRemoveFromCart={removeFromCart}
+          onSetCartQuantity={setCartQuantity}
+        />
+      )}
 
-          <div className="product-grid">
-            {filteredCatalog.map((product) => {
-              const stock = inventoryByProduct.get(product.productId);
-              const quantity = product.quantity ?? stock?.quantity ?? 0;
-              const sold = product.itemSold ?? stock?.itemSold ?? 0;
-              return (
-                <article className="product-card" key={product.productId}>
-                  <div className="product-topline">
-                    <span>{formatEnum(product.category)}</span>
-                    <Status active={Boolean(product.active)} />
-                  </div>
-                  <h3>{product.productName}</h3>
-                  <p>{product.description || "No description"}</p>
-                  <div className="product-stats">
-                    <strong>{currency.format(Number(product.price || 0))}</strong>
-                    <span>{quantity} in stock</span>
-                    <span>{sold} sold</span>
-                  </div>
-                  <div className="card-actions">
-                    <button className="icon-button" title="Add one to inventory" onClick={() => void addInventory(product.productId, 1)}>
-                      <Boxes size={17} />
-                    </button>
-                    <button className="primary-button" onClick={() => addToCart(product.productId)} disabled={!product.active}>
-                      <ShoppingCart size={17} />
-                      Add
-                    </button>
-                  </div>
-                </article>
-              );
-            })}
-            {!filteredCatalog.length && <div className="empty-state">No products available</div>}
-          </div>
-        </div>
+      {page === "checkout" && (
+        <CheckoutPage
+          cartLines={cartLines}
+          cartTotal={cartTotal}
+          currentOrder={currentOrder}
+          currentOrderId={currentOrderId}
+          isLoading={isLoading}
+          lastOrder={lastOrder}
+          orderForm={orderForm}
+          paymentForm={paymentForm}
+          productById={productById}
+          onCancelOrder={cancelOrder}
+          onCreateOrder={createOrder}
+          onHome={goHome}
+          onPaymentFormChange={setPaymentForm}
+          onRemoveFromCart={removeFromCart}
+          onSetCartQuantity={setCartQuantity}
+          onSetCurrentOrderId={setCurrentOrderId}
+          onSetOrderForm={setOrderForm}
+          onSubmitPayment={submitPayment}
+          onViewOrder={viewOrder}
+        />
+      )}
 
-        <aside className="side-panel">
-          <section className="tool-panel">
-            <h2>Cart</h2>
-            <div className="cart-lines">
-              {cartLines.map((line) => (
-                <div className="cart-line" key={line.product.productId}>
-                  <span>{line.product.productName}</span>
-                  <input
-                    type="number"
-                    min="0"
-                    value={line.quantity}
-                    onChange={(event) => setCartQuantity(line.product.productId, Number(event.target.value))}
-                    aria-label={`${line.product.productName} quantity`}
-                  />
-                </div>
-              ))}
-              {!cartLines.length && <div className="muted">Cart is empty</div>}
-            </div>
-            <div className="total-line">
-              <span>Total</span>
-              <strong>{currency.format(cartTotal)}</strong>
-            </div>
-            <form onSubmit={createOrder} className="form-stack">
-              <input value={orderForm.email} onChange={(event) => setOrderForm({ ...orderForm, email: event.target.value })} placeholder="Email" required />
-              <select value={orderForm.customerType} onChange={(event) => setOrderForm({ ...orderForm, customerType: event.target.value as "GUEST" | "MEMBER" })}>
-                <option value="GUEST">Guest</option>
-                <option value="MEMBER">Member</option>
-              </select>
-              {orderForm.customerType === "MEMBER" && (
-                <input value={orderForm.customerId} onChange={(event) => setOrderForm({ ...orderForm, customerId: event.target.value })} placeholder="Customer UUID" />
-              )}
-              <button className="primary-button" type="submit">
-                <ClipboardList size={17} />
-                Create order
-              </button>
-            </form>
-          </section>
-
-          <section className="tool-panel">
-            <h2>Order</h2>
-            <div className="order-box">
-              <span>{lastOrder?.orderId || "No order selected"}</span>
-              <strong>{lastOrder?.status || "None"}</strong>
-            </div>
-            <div className="split-actions">
-              <button className="icon-button text-button" onClick={() => void refreshOrder()} disabled={!lastOrder && !paymentForm.orderId}>
-                <RefreshCw size={17} />
-                Poll
-              </button>
-              <button className="danger-button" onClick={() => void cancelOrder()} disabled={!lastOrder && !paymentForm.orderId}>
-                <XCircle size={17} />
-                Cancel
-              </button>
-            </div>
-          </section>
-
-          <section className="tool-panel">
-            <h2>Payment</h2>
-            <form onSubmit={submitPayment} className="form-stack">
-              <input value={paymentForm.orderId} onChange={(event) => setPaymentForm({ ...paymentForm, orderId: event.target.value })} placeholder="Order UUID" required />
-              <input value={paymentForm.paymentId} onChange={(event) => setPaymentForm({ ...paymentForm, paymentId: event.target.value })} placeholder="Payment UUID" required />
-              <input value={paymentForm.paymentMethodId} onChange={(event) => setPaymentForm({ ...paymentForm, paymentMethodId: event.target.value })} placeholder="Payment method UUID" required />
-              <select value={paymentForm.currencyType} onChange={(event) => setPaymentForm({ ...paymentForm, currencyType: event.target.value })}>
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="GBP">GBP</option>
-                <option value="JPY">JPY</option>
-                <option value="CNY">CNY</option>
-              </select>
-              <button className="primary-button" type="submit">
-                <CreditCard size={17} />
-                Submit payment
-              </button>
-            </form>
-          </section>
-        </aside>
-      </section>
-
-      <section className="admin-band">
-        <form onSubmit={createProduct} className="admin-form">
-          <h2>Create product</h2>
-          <input value={productForm.productName} onChange={(event) => setProductForm({ ...productForm, productName: event.target.value })} placeholder="Product name" required />
-          <input value={productForm.description} onChange={(event) => setProductForm({ ...productForm, description: event.target.value })} placeholder="Description" required />
-          <select value={productForm.category} onChange={(event) => setProductForm({ ...productForm, category: event.target.value as Category })}>
-            {categories.map((category) => (
-              <option value={category} key={category}>
-                {formatEnum(category)}
-              </option>
-            ))}
-          </select>
-          <input type="number" min="0" step="0.01" value={productForm.price} onChange={(event) => setProductForm({ ...productForm, price: event.target.value })} placeholder="Price" required />
-          <label className="toggle-line">
-            <input type="checkbox" checked={productForm.active} onChange={(event) => setProductForm({ ...productForm, active: event.target.checked })} />
-            Active
-          </label>
-          <button className="primary-button" type="submit">
-            <PackagePlus size={17} />
-            Save product
-          </button>
-        </form>
-
-        <form onSubmit={createInventory} className="admin-form">
-          <h2>Seed inventory</h2>
-          <input value={inventoryForm.productId} onChange={(event) => setInventoryForm({ ...inventoryForm, productId: event.target.value })} placeholder="Product id" required />
-          <input type="number" min="0" value={inventoryForm.quantity} onChange={(event) => setInventoryForm({ ...inventoryForm, quantity: event.target.value })} placeholder="Quantity" required />
-          <button className="primary-button" type="submit">
-            <Boxes size={17} />
-            Save inventory
-          </button>
-        </form>
-      </section>
+      {page === "seller" && (
+        <SellerPage
+          filteredCatalog={filteredCatalog}
+          inventoryAdjustments={inventoryAdjustments}
+          inventoryByProduct={inventoryByProduct}
+          isLoading={isLoading}
+          orders={safeOrders}
+          productForm={productForm}
+          query={query}
+          selectedCategory={selectedCategory}
+          onAddInventory={addInventory}
+          onCancelOrder={cancelOrder}
+          onCategoryChange={setSelectedCategory}
+          onCreateProduct={createProduct}
+          onProductFormChange={setProductForm}
+          onQueryChange={setQuery}
+          onRefresh={refreshAll}
+          onSetInventoryAdjustments={setInventoryAdjustments}
+        />
+      )}
 
       {toast && (
         <div className={`toast ${toast.tone}`}>
@@ -549,35 +411,6 @@ function App() {
       )}
     </main>
   );
-}
-
-function Metric({ label, value, icon }: { label: string; value: string | number; icon: React.ReactNode }) {
-  return (
-    <div className="metric">
-      {icon}
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function Status({ active }: { active: boolean }) {
-  return <span className={active ? "status active" : "status inactive"}>{active ? "Active" : "Inactive"}</span>;
-}
-
-function formatEnum(value: string) {
-  return value
-    .toLowerCase()
-    .split("_")
-    .map((word) => word[0].toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
-function messageFrom(error: unknown) {
-  if (error instanceof Error) {
-    return error.message.replaceAll('"', "");
-  }
-  return "Request failed";
 }
 
 createRoot(document.getElementById("root")!).render(<App />);

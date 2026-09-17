@@ -18,7 +18,7 @@ public class ProductItemProducer {
 
         return kafkaTemplate.send(
                 TOPIC,
-                String.valueOf(response.getProductId()),
+                response.getProductId().toString(),
                 response
         );
     }

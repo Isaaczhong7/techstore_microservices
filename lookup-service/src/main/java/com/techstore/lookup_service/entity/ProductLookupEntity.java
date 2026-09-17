@@ -18,7 +18,7 @@ public class ProductLookupEntity {
 
     @Id
     @Column(nullable = false)
-    private Long productId;
+    private UUID productId;
 
     private String productName;
 

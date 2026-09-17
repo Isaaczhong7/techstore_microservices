@@ -49,6 +49,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class OrderServiceTest {
+    private static final UUID PRODUCT_1 = UUID.fromString("00000000-0000-0000-0000-000000000010");
+    private static final UUID PRODUCT_2 = UUID.fromString("00000000-0000-0000-0000-000000000020");
 
     private OrderRepository orderRepository;
     private OutboxEventService outboxEventService;
@@ -69,8 +71,8 @@ class OrderServiceTest {
                 .customerType(CustomerType.GUEST)
                 .email("guest@example.com")
                 .items(List.of(
-                        OrderItemRequest.builder().productId(10L).quantity(2L).build(),
-                        OrderItemRequest.builder().productId(20L).quantity(1L).build()
+                        OrderItemRequest.builder().productId(PRODUCT_1).quantity(2L).build(),
+                        OrderItemRequest.builder().productId(PRODUCT_2).quantity(1L).build()
                 ))
                 .build();
 
@@ -80,12 +82,13 @@ class OrderServiceTest {
         verify(orderRepository).save(saved.capture());
         assertThat(response.getOrderId()).isEqualTo(saved.getValue().getId());
         assertThat(response.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(response.getExpiresAt()).isEqualTo(saved.getValue().getExpiresAt());
         assertThat(saved.getValue().getPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
         assertThat(saved.getValue().getItems())
                 .extracting(OrderItemEntity::getProductId, OrderItemEntity::getQuantity, OrderItemEntity::getStatus)
                 .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple(10L, 2L, OrderItemStatus.PENDING),
-                        org.assertj.core.groups.Tuple.tuple(20L, 1L, OrderItemStatus.PENDING)
+                        org.assertj.core.groups.Tuple.tuple(PRODUCT_1, 2L, OrderItemStatus.PENDING),
+                        org.assertj.core.groups.Tuple.tuple(PRODUCT_2, 1L, OrderItemStatus.PENDING)
                 );
 
         ArgumentCaptor<QueryProductsRequest> payload = ArgumentCaptor.forClass(QueryProductsRequest.class);
@@ -93,8 +96,8 @@ class OrderServiceTest {
         assertThat(payload.getValue().getProducts())
                 .extracting(com.techstore.order.dto.ProductEntry::getProductId, com.techstore.order.dto.ProductEntry::getQuantity)
                 .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple(10L, 2L),
-                        org.assertj.core.groups.Tuple.tuple(20L, 1L)
+                        org.assertj.core.groups.Tuple.tuple(PRODUCT_1, 2L),
+                        org.assertj.core.groups.Tuple.tuple(PRODUCT_2, 1L)
                 );
     }
 
@@ -113,7 +116,7 @@ class OrderServiceTest {
         CreateOrderRequest badQuantity = CreateOrderRequest.builder()
                 .customerType(CustomerType.GUEST)
                 .email("guest@example.com")
-                .items(List.of(OrderItemRequest.builder().productId(10L).quantity(0L).build()))
+                .items(List.of(OrderItemRequest.builder().productId(PRODUCT_1).quantity(0L).build()))
                 .build();
 
         assertThatThrownBy(() -> orderService.createOrder(badQuantity))
@@ -125,7 +128,7 @@ class OrderServiceTest {
     void productCheckUpdatesUnitPricesAndRequestsInventoryReservation() {
         UUID eventId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
-        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.PENDING, item(10L, 2L), item(20L, 1L));
+        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.PENDING, item(PRODUCT_1, 2L), item(PRODUCT_2, 1L));
         when(processedEventRepository.tryMarkProcessed(eventId, "PRODUCT_CHECK_COMPLETED")).thenReturn(1);
         when(orderRepository.findByIdForUpdate(orderId)).thenReturn(Optional.of(order));
 
@@ -133,8 +136,8 @@ class OrderServiceTest {
                 eventId,
                 orderId.toString(),
                 List.of(
-                        new ProductEntryCompleted(10L, "Laptop", new BigDecimal("100.00"), true),
-                        new ProductEntryCompleted(20L, "Mouse", new BigDecimal("25.00"), true)
+                        new ProductEntryCompleted(PRODUCT_1, "Laptop", new BigDecimal("100.00"), true),
+                        new ProductEntryCompleted(PRODUCT_2, "Mouse", new BigDecimal("25.00"), true)
                 )
         ));
 
@@ -159,14 +162,14 @@ class OrderServiceTest {
     void productCheckThrowsWhenProductResponseIsMissingItem() {
         UUID eventId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
-        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.PENDING, item(10L, 2L));
+        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.PENDING, item(PRODUCT_1, 2L));
         when(processedEventRepository.tryMarkProcessed(eventId, "PRODUCT_CHECK_COMPLETED")).thenReturn(1);
         when(orderRepository.findByIdForUpdate(orderId)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> orderService.productCheck(new ProductCheckCompleted(
                 eventId,
                 orderId.toString(),
-                List.of(new ProductEntryCompleted(20L, "Mouse", new BigDecimal("25.00"), true))
+                List.of(new ProductEntryCompleted(PRODUCT_2, "Mouse", new BigDecimal("25.00"), true))
         )))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Missing product information");
@@ -177,7 +180,7 @@ class OrderServiceTest {
         UUID eventId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
         UUID reservationId = UUID.randomUUID();
-        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.PENDING, item(10L, 2L), item(20L, 1L));
+        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.PENDING, item(PRODUCT_1, 2L), item(PRODUCT_2, 1L));
         order.getItems().get(0).setUnitPrice(new BigDecimal("100.00"));
         order.getItems().get(1).setUnitPrice(new BigDecimal("25.00"));
         when(processedEventRepository.tryMarkProcessed(eventId, "CREATE_RESERVATION_COMPLETED")).thenReturn(1);
@@ -189,8 +192,8 @@ class OrderServiceTest {
                 orderId,
                 com.techstore.kafka.inventory.ReservationStatus.PARTIAL,
                 List.of(
-                        new ReservationItemCompleted(10L, 2L, com.techstore.kafka.inventory.ReservationItemStatus.RESERVED),
-                        new ReservationItemCompleted(20L, 1L, com.techstore.kafka.inventory.ReservationItemStatus.OUT_OF_STOCK)
+                        new ReservationItemCompleted(PRODUCT_1, 2L, com.techstore.kafka.inventory.ReservationItemStatus.RESERVED),
+                        new ReservationItemCompleted(PRODUCT_2, 1L, com.techstore.kafka.inventory.ReservationItemStatus.OUT_OF_STOCK)
                 )
         ));
 
@@ -210,7 +213,7 @@ class OrderServiceTest {
         UUID orderId = UUID.randomUUID();
         UUID paymentId = UUID.randomUUID();
         UUID methodId = UUID.randomUUID();
-        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.PENDING, item(10L, 1L));
+        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.PENDING, item(PRODUCT_1, 1L));
         when(processedEventRepository.tryMarkProcessed(eventId, "CREATE_PAYMENT_COMPLETED")).thenReturn(1);
         when(orderRepository.findByIdForUpdate(orderId)).thenReturn(Optional.of(order));
 
@@ -231,7 +234,7 @@ class OrderServiceTest {
     @Test
     void submitPaymentRequiresPaymentId() {
         UUID orderId = UUID.randomUUID();
-        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.PENDING, item(10L, 1L));
+        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.PENDING, item(PRODUCT_1, 1L));
         when(orderRepository.findByIdForUpdate(orderId)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> orderService.submitPayment(SubmitPaymentRequest.builder().orderId(orderId).build()))
@@ -243,7 +246,7 @@ class OrderServiceTest {
     void submitPaymentMarksConfirmingAndPublishesPaymentSubmitRequest() {
         UUID orderId = UUID.randomUUID();
         UUID paymentId = UUID.randomUUID();
-        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.PENDING, item(10L, 1L));
+        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.PENDING, item(PRODUCT_1, 1L));
         order.setPaymentID(paymentId);
         when(orderRepository.findByIdForUpdate(orderId)).thenReturn(Optional.of(order));
         SubmitPaymentRequest request = SubmitPaymentRequest.builder()
@@ -256,6 +259,7 @@ class OrderServiceTest {
         ReservationStatusResponse response = orderService.submitPayment(request);
 
         assertThat(response.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(response.getExpiresAt()).isEqualTo(order.getExpiresAt());
         assertThat(order.getPaymentStatus()).isEqualTo(PaymentStatus.CONFIRMING);
         verify(orderRepository).save(order);
         verify(outboxEventService).saveEvent(orderId, "SUBMIT_PAYMENT_REQUESTED", "payment-submit", request);
@@ -267,7 +271,7 @@ class OrderServiceTest {
         UUID orderId = UUID.randomUUID();
         UUID paymentId = UUID.randomUUID();
         UUID reservationId = UUID.randomUUID();
-        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.CONFIRMING, item(10L, 1L));
+        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.CONFIRMING, item(PRODUCT_1, 1L));
         order.setPaymentID(paymentId);
         order.setReservationId(reservationId);
         when(processedEventRepository.tryMarkProcessed(eventId, "SUBMIT_PAYMENT_COMPLETED")).thenReturn(1);
@@ -291,7 +295,7 @@ class OrderServiceTest {
         UUID eventId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
         UUID paymentId = UUID.randomUUID();
-        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.CONFIRMING, item(10L, 1L));
+        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.CONFIRMING, item(PRODUCT_1, 1L));
         order.setPaymentID(paymentId);
         when(processedEventRepository.tryMarkProcessed(eventId, "SUBMIT_PAYMENT_COMPLETED")).thenReturn(1);
         when(orderRepository.findByIdForUpdate(orderId)).thenReturn(Optional.of(order));
@@ -313,7 +317,7 @@ class OrderServiceTest {
     void submitPaymentUpdateRejectsMismatchedPaymentId() {
         UUID eventId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
-        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.CONFIRMING, item(10L, 1L));
+        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.CONFIRMING, item(PRODUCT_1, 1L));
         order.setPaymentID(UUID.randomUUID());
         when(processedEventRepository.tryMarkProcessed(eventId, "SUBMIT_PAYMENT_COMPLETED")).thenReturn(1);
         when(orderRepository.findByIdForUpdate(orderId)).thenReturn(Optional.of(order));
@@ -334,7 +338,7 @@ class OrderServiceTest {
         UUID eventId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
         UUID reservationId = UUID.randomUUID();
-        OrderEntity order = order(orderId, OrderStatus.CONFIRMING, PaymentStatus.SUCCEEDED, item(10L, 1L));
+        OrderEntity order = order(orderId, OrderStatus.CONFIRMING, PaymentStatus.SUCCEEDED, item(PRODUCT_1, 1L));
         order.getItems().get(0).setStatus(OrderItemStatus.RESERVED);
         when(processedEventRepository.tryMarkProcessed(eventId, "CONFIRM_RESERVATION_COMPLETED")).thenReturn(1);
         when(orderRepository.findByIdForUpdate(orderId)).thenReturn(Optional.of(order));
@@ -355,7 +359,7 @@ class OrderServiceTest {
         UUID eventId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
         UUID paymentId = UUID.randomUUID();
-        OrderEntity order = order(orderId, OrderStatus.CONFIRMING, PaymentStatus.SUCCEEDED, item(10L, 1L));
+        OrderEntity order = order(orderId, OrderStatus.CONFIRMING, PaymentStatus.SUCCEEDED, item(PRODUCT_1, 1L));
         order.setPaymentID(paymentId);
         when(processedEventRepository.tryMarkProcessed(eventId, "CONFIRM_RESERVATION_COMPLETED")).thenReturn(1);
         when(orderRepository.findByIdForUpdate(orderId)).thenReturn(Optional.of(order));
@@ -376,13 +380,14 @@ class OrderServiceTest {
     void cancelOrderRequestsReservationCancellation() {
         UUID orderId = UUID.randomUUID();
         UUID reservationId = UUID.randomUUID();
-        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.PENDING, item(10L, 1L));
+        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.PENDING, item(PRODUCT_1, 1L));
         order.setReservationId(reservationId);
         when(orderRepository.findByIdForUpdate(orderId)).thenReturn(Optional.of(order));
 
         ReservationStatusResponse response = orderService.cancelOrder(CancelReservationRequest.builder().orderId(orderId).build());
 
         assertThat(response.getStatus()).isEqualTo(OrderStatus.CANCELLING);
+        assertThat(response.getExpiresAt()).isEqualTo(order.getExpiresAt());
         assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.CANCELLING);
         verify(outboxEventService).saveEvent(eq(orderId), eq("CANCEL_RESERVATION_REQUESTED"), eq("order-cancel"), any(CancelReservationRequest.class));
     }
@@ -390,7 +395,7 @@ class OrderServiceTest {
     @Test
     void cancelOrderRejectsPaymentCurrentlyConfirming() {
         UUID orderId = UUID.randomUUID();
-        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.CONFIRMING, item(10L, 1L));
+        OrderEntity order = order(orderId, OrderStatus.PENDING, PaymentStatus.CONFIRMING, item(PRODUCT_1, 1L));
         order.setReservationId(UUID.randomUUID());
         when(orderRepository.findByIdForUpdate(orderId)).thenReturn(Optional.of(order));
 
@@ -403,7 +408,7 @@ class OrderServiceTest {
     void cancelOrderUpdateCancelsOrderWhenPaymentNeverSucceeded() {
         UUID eventId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
-        OrderEntity order = order(orderId, OrderStatus.CANCELLING, PaymentStatus.PENDING, item(10L, 1L));
+        OrderEntity order = order(orderId, OrderStatus.CANCELLING, PaymentStatus.PENDING, item(PRODUCT_1, 1L));
         order.getItems().get(0).setStatus(OrderItemStatus.RESERVED);
         when(processedEventRepository.tryMarkProcessed(eventId, "CANCEL_RESERVATION_COMPLETED")).thenReturn(1);
         when(orderRepository.findByIdForUpdate(orderId)).thenReturn(Optional.of(order));
@@ -425,7 +430,7 @@ class OrderServiceTest {
         UUID eventId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
         UUID paymentId = UUID.randomUUID();
-        OrderEntity order = order(orderId, OrderStatus.CANCELLING, PaymentStatus.SUCCEEDED, item(10L, 1L));
+        OrderEntity order = order(orderId, OrderStatus.CANCELLING, PaymentStatus.SUCCEEDED, item(PRODUCT_1, 1L));
         order.setPaymentID(paymentId);
         when(processedEventRepository.tryMarkProcessed(eventId, "CANCEL_RESERVATION_COMPLETED")).thenReturn(1);
         when(orderRepository.findByIdForUpdate(orderId)).thenReturn(Optional.of(order));
@@ -447,7 +452,7 @@ class OrderServiceTest {
         UUID eventId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
         UUID paymentId = UUID.randomUUID();
-        OrderEntity order = order(orderId, OrderStatus.CANCELLING, PaymentStatus.CANCELLING, item(10L, 1L));
+        OrderEntity order = order(orderId, OrderStatus.CANCELLING, PaymentStatus.CANCELLING, item(PRODUCT_1, 1L));
         order.setPaymentID(paymentId);
         when(processedEventRepository.tryMarkProcessed(eventId, "CANCEL_PAYMENT_COMPLETED")).thenReturn(1);
         when(orderRepository.findByIdForUpdate(orderId)).thenReturn(Optional.of(order));
@@ -474,6 +479,33 @@ class OrderServiceTest {
                 .hasMessage("unable to find order" + orderId);
     }
 
+    @Test
+    void getAllOrdersReturnsOrderEntriesWithPaymentAndItems() {
+        UUID orderId = UUID.randomUUID();
+        UUID paymentId = UUID.randomUUID();
+        UUID reservationId = UUID.randomUUID();
+        OrderEntity order = order(orderId, OrderStatus.CONFIRMED, PaymentStatus.SUCCEEDED, item(PRODUCT_1, 2L));
+        order.setPaymentID(paymentId);
+        order.setReservationId(reservationId);
+        order.setTotalAmount(BigDecimal.valueOf(1999));
+        order.getItems().get(0).setUnitPrice(BigDecimal.valueOf(999.50));
+        order.getItems().get(0).setStatus(OrderItemStatus.RESERVED);
+        when(orderRepository.findAll()).thenReturn(List.of(order));
+
+        var response = orderService.getAllOrders();
+
+        assertThat(response).hasSize(1);
+        assertThat(response.get(0).getId()).isEqualTo(orderId);
+        assertThat(response.get(0).getPaymentId()).isEqualTo(paymentId);
+        assertThat(response.get(0).getReservationId()).isEqualTo(reservationId);
+        assertThat(response.get(0).getPaymentStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
+        assertThat(response.get(0).getTotalAmount()).isEqualByComparingTo("1999");
+        assertThat(response.get(0).getExpiresAt()).isEqualTo(order.getExpiresAt());
+        assertThat(response.get(0).getItems()).hasSize(1);
+        assertThat(response.get(0).getItems().get(0).getProductId()).isEqualTo(PRODUCT_1);
+        assertThat(response.get(0).getItems().get(0).getUnitPrice()).isEqualByComparingTo("999.50");
+    }
+
     private static OrderEntity order(UUID id, OrderStatus orderStatus, PaymentStatus paymentStatus, OrderItemEntity... items) {
         OrderEntity order = OrderEntity.builder()
                 .id(id)
@@ -491,7 +523,7 @@ class OrderServiceTest {
         return order;
     }
 
-    private static OrderItemEntity item(Long productId, Long quantity) {
+    private static OrderItemEntity item(UUID productId, Long quantity) {
         return OrderItemEntity.builder()
                 .productId(productId)
                 .quantity(quantity)

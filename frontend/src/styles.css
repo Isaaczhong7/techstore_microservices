@@ -44,6 +44,39 @@ main {
   max-width: 1440px;
 }
 
+.header-actions {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.page-tabs {
+  background: #e9edf2;
+  border: 1px solid #d2d9e3;
+  border-radius: 8px;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+}
+
+.page-tabs button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  color: #4f5a6d;
+  display: inline-flex;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+}
+
+.page-tabs button.active {
+  background: #ffffff;
+  box-shadow: 0 1px 5px rgba(30, 45, 63, 0.12);
+  color: #18212f;
+}
+
 .eyebrow {
   align-items: center;
   color: #596273;
@@ -118,6 +151,17 @@ h3 {
   grid-template-columns: minmax(0, 1fr) 370px;
   margin: 0 auto;
   max-width: 1440px;
+}
+
+.checkout-page {
+  margin: 0 auto;
+  max-width: 1440px;
+}
+
+.checkout-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .catalog-panel,
@@ -302,6 +346,8 @@ h3 {
 .cart-line {
   background: #f7f9fb;
   border-radius: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px 36px;
   min-height: 42px;
   padding: 8px 10px;
 }
@@ -320,6 +366,16 @@ h3 {
   min-height: 30px;
   padding: 0 6px;
   width: 72px;
+}
+
+.checkout-line input:disabled {
+  background: #eef2f6;
+}
+
+.square-button {
+  min-height: 32px;
+  padding: 0;
+  width: 36px;
 }
 
 .form-stack {
@@ -343,10 +399,32 @@ h3 {
   overflow-wrap: anywhere;
 }
 
-.admin-band {
+.expiry-box {
+  background: #eef5ff;
+  border: 1px solid #cfe2ff;
+  border-radius: 8px;
+  color: #194e87;
+  font-weight: 700;
+  padding: 12px;
+}
+
+.order-item {
+  align-items: center;
+  border-top: 1px solid #dce3eb;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding-top: 8px;
+}
+
+.order-item span {
+  color: #293547;
+  font-family: inherit;
+}
+
+.seller-page {
   display: grid;
   gap: 18px;
-  grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
   margin: 18px auto 0;
   max-width: 1440px;
 }
@@ -357,6 +435,109 @@ h3 {
   gap: 10px;
   grid-template-columns: 160px repeat(5, minmax(0, 1fr)) auto;
   padding: 16px;
+}
+
+.seller-table,
+.order-list {
+  display: grid;
+  gap: 8px;
+}
+
+.pagination {
+  align-items: center;
+  color: #687386;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-top: 14px;
+}
+
+.pagination div {
+  display: flex;
+  gap: 8px;
+}
+
+.seller-row {
+  align-items: center;
+  border: 1px solid #e0e6ee;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(220px, 1.35fr) minmax(130px, 0.8fr) 90px 90px minmax(220px, 1fr);
+  min-height: 58px;
+  padding: 10px 12px;
+}
+
+.seller-head {
+  background: #f7f9fb;
+  color: #657084;
+  font-size: 0.82rem;
+  font-weight: 700;
+  min-height: 42px;
+}
+
+.seller-row strong,
+.seller-row small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.seller-row small {
+  color: #748095;
+  font-size: 0.76rem;
+  margin-top: 2px;
+}
+
+.inventory-editor {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(72px, 1fr) auto;
+}
+
+.inventory-editor input {
+  background: #f7f9fb;
+  border: 1px solid #d7dee7;
+  border-radius: 8px;
+  min-height: 38px;
+  min-width: 0;
+  padding: 0 10px;
+}
+
+.order-entry {
+  align-items: center;
+  border: 1px solid #e0e6ee;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(260px, 1.4fr) minmax(160px, 0.8fr) minmax(180px, 0.8fr);
+  min-height: 70px;
+  padding: 12px;
+}
+
+.order-entry div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.order-entry div:last-child {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.order-entry span {
+  color: #687386;
+  font-size: 0.84rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.status-text {
+  color: #28666e;
 }
 
 .toggle-line {
@@ -426,12 +607,17 @@ h3 {
 
 @media (max-width: 1100px) {
   .workspace,
-  .admin-band {
+  .checkout-grid {
     grid-template-columns: 1fr;
   }
 
   .admin-form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .seller-row,
+  .order-entry {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -441,6 +627,7 @@ h3 {
   }
 
   .app-header,
+  .header-actions,
   .panel-header,
   .filters {
     align-items: stretch;
@@ -454,6 +641,14 @@ h3 {
   .product-grid,
   .admin-form {
     grid-template-columns: 1fr;
+  }
+
+  .page-tabs {
+    width: 100%;
+  }
+
+  .page-tabs button {
+    flex: 1;
   }
 
   h1 {

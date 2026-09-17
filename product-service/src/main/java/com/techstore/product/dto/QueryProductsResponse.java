@@ -14,5 +14,5 @@ import java.util.UUID;
 @AllArgsConstructor
 public class QueryProductsResponse {
     private UUID orderId;
-    private List<ProductEntry> productList;
+    private List<ProductItemResponse> productList;
 }

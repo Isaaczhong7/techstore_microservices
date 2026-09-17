@@ -21,7 +21,7 @@ public class InventoryEntity {
     private UUID id;
 
     @Column(nullable = false, unique = true)
-    private Long productId;
+    private UUID productId;
 
     @Column(nullable = false)
     private Long quantity;

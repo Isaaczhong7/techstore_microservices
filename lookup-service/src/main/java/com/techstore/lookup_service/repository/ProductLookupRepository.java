@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 @Repository
-public interface ProductLookupRepository extends JpaRepository<ProductLookupEntity, Long> {
+public interface ProductLookupRepository extends JpaRepository<ProductLookupEntity, UUID> {
     @Modifying(
             clearAutomatically = true,
             flushAutomatically = true
@@ -42,7 +42,7 @@ public interface ProductLookupRepository extends JpaRepository<ProductLookupEnti
        OR product_lookup.inventory_version < EXCLUDED.inventory_version
     """, nativeQuery = true)
     int upsertInventory(
-            @Param("productId") Long productId,
+            @Param("productId") UUID productId,
             @Param("quantity") Long quantity,
             @Param("itemSold") Long itemSold,
             @Param("version") Long version
@@ -86,7 +86,7 @@ public interface ProductLookupRepository extends JpaRepository<ProductLookupEnti
            OR product_lookup.product_version < EXCLUDED.product_version
         """, nativeQuery = true)
     int upsertProduct(
-            @Param("productId") Long productId,
+            @Param("productId") UUID productId,
             @Param("productName") String productName,
             @Param("description") String description,
             @Param("category") String category,

@@ -40,6 +40,9 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
 
 class InventoryServiceTest {
+    private static final UUID PRODUCT_1 = UUID.fromString("00000000-0000-0000-0000-000000000010");
+    private static final UUID PRODUCT_2 = UUID.fromString("00000000-0000-0000-0000-000000000020");
+    private static final UUID MISSING_PRODUCT = UUID.fromString("00000000-0000-0000-0000-000000000404");
 
     private InventoryRepository inventoryRepository;
     private InventoryReservationRepository inventoryReservationRepository;
@@ -64,11 +67,11 @@ class InventoryServiceTest {
     @Test
     void createInventorySavesDefaultStockRowsAndPublishesInventoryEvents() {
         CreateInventoryRequest first = CreateInventoryRequest.builder()
-                .productId(10L)
+                .productId(PRODUCT_1)
                 .quantity(7L)
                 .build();
         CreateInventoryRequest second = CreateInventoryRequest.builder()
-                .productId(20L)
+                .productId(PRODUCT_2)
                 .quantity(3L)
                 .build();
 
@@ -78,10 +81,10 @@ class InventoryServiceTest {
                     entity.setId(UUID.randomUUID());
                     return entity;
                 });
-        when(inventoryRepository.findByProductId(10L))
-                .thenReturn(Optional.of(inventory(10L, 7L, 0L, 0L, 0L)));
-        when(inventoryRepository.findByProductId(20L))
-                .thenReturn(Optional.of(inventory(20L, 3L, 0L, 0L, 0L)));
+        when(inventoryRepository.findByProductId(PRODUCT_1))
+                .thenReturn(Optional.of(inventory(PRODUCT_1, 7L, 0L, 0L, 0L)));
+        when(inventoryRepository.findByProductId(PRODUCT_2))
+                .thenReturn(Optional.of(inventory(PRODUCT_2, 3L, 0L, 0L, 0L)));
 
         inventoryService.createInventory(List.of(first, second));
 
@@ -96,8 +99,8 @@ class InventoryServiceTest {
                         InventoryEntity::getVersion
                 )
                 .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple(10L, 7L, 0L, 0L, 0L),
-                        org.assertj.core.groups.Tuple.tuple(20L, 3L, 0L, 0L, 0L)
+                        org.assertj.core.groups.Tuple.tuple(PRODUCT_1, 7L, 0L, 0L, 0L),
+                        org.assertj.core.groups.Tuple.tuple(PRODUCT_2, 3L, 0L, 0L, 0L)
                 );
         verify(outboxEventService, times(2)).saveEvent(any(UUID.class), eq("INVENTORY_ITEM_COMPLETED"), eq("inventory-item-update"), any(InventoryItemResponse.class));
     }
@@ -105,7 +108,7 @@ class InventoryServiceTest {
     @Test
     void updateSpecificProductRejectsInvalidQuantity() {
         assertThatThrownBy(() -> inventoryService.updateSpecificProduct(
-                10L,
+                PRODUCT_1,
                 new UpdateProductRequest(0L)
         ))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -116,16 +119,16 @@ class InventoryServiceTest {
 
     @Test
     void updateSpecificProductAddsQuantityAndPublishesInventoryEvent() {
-        InventoryEntity inventory = inventory(10L, 12L, 0L, 1L, 5L);
-        when(inventoryRepository.addQuantity(10L, 4L)).thenReturn(1);
-        when(inventoryRepository.findByProductId(10L)).thenReturn(Optional.of(inventory));
+        InventoryEntity inventory = inventory(PRODUCT_1, 12L, 0L, 1L, 5L);
+        when(inventoryRepository.addQuantity(PRODUCT_1, 4L)).thenReturn(1);
+        when(inventoryRepository.findByProductId(PRODUCT_1)).thenReturn(Optional.of(inventory));
 
         inventoryService.updateSpecificProduct(
-                10L,
+                PRODUCT_1,
                 new UpdateProductRequest(4L)
         );
 
-        verify(inventoryRepository).addQuantity(10L, 4L);
+        verify(inventoryRepository).addQuantity(PRODUCT_1, 4L);
         verify(outboxEventService).saveEvent(
                 eq(inventory.getId()),
                 eq("INVENTORY_ITEM_COMPLETED"),
@@ -136,14 +139,14 @@ class InventoryServiceTest {
 
     @Test
     void updateSpecificProductThrowsWhenProductDoesNotExist() {
-        when(inventoryRepository.addQuantity(999L, 2L)).thenReturn(0);
+        when(inventoryRepository.addQuantity(MISSING_PRODUCT, 2L)).thenReturn(0);
 
         assertThatThrownBy(() -> inventoryService.updateSpecificProduct(
-                999L,
+                MISSING_PRODUCT,
                 new UpdateProductRequest(2L)
         ))
                 .isInstanceOf(ProductIdNotFoundException.class)
-                .hasMessage("Unable to find product id: 999");
+                .hasMessage("Unable to find product id: " + MISSING_PRODUCT);
 
         verify(outboxEventService, never()).saveEvent(any(), any(), any(), any());
     }
@@ -166,8 +169,8 @@ class InventoryServiceTest {
         UUID orderId = UUID.randomUUID();
         when(processedEventRepository.tryMarkProcessed(eventId, "CREATE_RESERVATION_REQUESTED"))
                 .thenReturn(1);
-        when(inventoryRepository.reserveIfAvailable(10L, 2L)).thenReturn(1);
-        when(inventoryRepository.reserveIfAvailable(20L, 3L)).thenReturn(1);
+        when(inventoryRepository.reserveIfAvailable(PRODUCT_1, 2L)).thenReturn(1);
+        when(inventoryRepository.reserveIfAvailable(PRODUCT_2, 3L)).thenReturn(1);
         when(inventoryReservationRepository.save(any(InventoryReservationEntity.class)))
                 .thenAnswer(invocation -> {
                     InventoryReservationEntity reservation = invocation.getArgument(0);
@@ -188,8 +191,8 @@ class InventoryServiceTest {
                         InventoryReservationItemEntity::getStatus
                 )
                 .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple(10L, 2L, ReservationItemStatus.RESERVED),
-                        org.assertj.core.groups.Tuple.tuple(20L, 3L, ReservationItemStatus.RESERVED)
+                        org.assertj.core.groups.Tuple.tuple(PRODUCT_1, 2L, ReservationItemStatus.RESERVED),
+                        org.assertj.core.groups.Tuple.tuple(PRODUCT_2, 3L, ReservationItemStatus.RESERVED)
                 );
         verify(outboxEventService).saveEvent(
                 eq(orderId),
@@ -205,9 +208,9 @@ class InventoryServiceTest {
         UUID orderId = UUID.randomUUID();
         when(processedEventRepository.tryMarkProcessed(eventId, "CREATE_RESERVATION_REQUESTED"))
                 .thenReturn(1);
-        when(inventoryRepository.reserveIfAvailable(10L, 2L)).thenReturn(1);
-        when(inventoryRepository.reserveIfAvailable(20L, 3L)).thenReturn(0);
-        when(inventoryRepository.findByProductId(20L)).thenReturn(Optional.of(inventory(20L, 1L, 0L, 0L, 0L)));
+        when(inventoryRepository.reserveIfAvailable(PRODUCT_1, 2L)).thenReturn(1);
+        when(inventoryRepository.reserveIfAvailable(PRODUCT_2, 3L)).thenReturn(0);
+        when(inventoryRepository.findByProductId(PRODUCT_2)).thenReturn(Optional.of(inventory(PRODUCT_2, 1L, 0L, 0L, 0L)));
         when(inventoryReservationRepository.save(any(InventoryReservationEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -228,12 +231,12 @@ class InventoryServiceTest {
                 reservationId,
                 ReservationStatus.PARTIAL,
                 LocalDateTime.now().minusMinutes(1),
-                item(10L, 2L, ReservationItemStatus.RESERVED),
-                item(20L, 1L, ReservationItemStatus.OUT_OF_STOCK)
+                item(PRODUCT_1, 2L, ReservationItemStatus.RESERVED),
+                item(PRODUCT_2, 1L, ReservationItemStatus.OUT_OF_STOCK)
         );
         when(inventoryReservationRepository.findByIdForUpdate(reservationId))
                 .thenReturn(Optional.of(reservation));
-        when(inventoryRepository.releaseReserved(10L, 2L)).thenReturn(1);
+        when(inventoryRepository.releaseReserved(PRODUCT_1, 2L)).thenReturn(1);
 
         inventoryService.expireReservation(reservationId);
 
@@ -241,8 +244,8 @@ class InventoryServiceTest {
         assertThat(reservation.getItems())
                 .extracting(InventoryReservationItemEntity::getStatus)
                 .containsExactly(ReservationItemStatus.EXPIRED, ReservationItemStatus.OUT_OF_STOCK);
-        verify(inventoryRepository).releaseReserved(10L, 2L);
-        verify(inventoryRepository, never()).releaseReserved(20L, 1L);
+        verify(inventoryRepository).releaseReserved(PRODUCT_1, 2L);
+        verify(inventoryRepository, never()).releaseReserved(PRODUCT_2, 1L);
         verify(inventoryReservationRepository).save(reservation);
     }
 
@@ -253,7 +256,7 @@ class InventoryServiceTest {
                 reservationId,
                 ReservationStatus.ACTIVE,
                 LocalDateTime.now().plusMinutes(1),
-                item(10L, 2L, ReservationItemStatus.RESERVED)
+                item(PRODUCT_1, 2L, ReservationItemStatus.RESERVED)
         );
         when(inventoryReservationRepository.findByIdForUpdate(reservationId))
                 .thenReturn(Optional.of(reservation));
@@ -274,18 +277,18 @@ class InventoryServiceTest {
                 reservationId,
                 ReservationStatus.ACTIVE,
                 LocalDateTime.now().plusMinutes(1),
-                item(10L, 2L, ReservationItemStatus.RESERVED),
-                item(20L, 3L, ReservationItemStatus.RESERVED)
+                item(PRODUCT_1, 2L, ReservationItemStatus.RESERVED),
+                item(PRODUCT_2, 3L, ReservationItemStatus.RESERVED)
         );
         reservation.setOrderId(orderId);
         when(processedEventRepository.tryMarkProcessed(eventId, "CONFIRM_RESERVATION_REQUESTED"))
                 .thenReturn(1);
         when(inventoryReservationRepository.findByIdForUpdate(reservationId))
                 .thenReturn(Optional.of(reservation));
-        when(inventoryRepository.confirmReserved(10L, 2L)).thenReturn(1);
-        when(inventoryRepository.confirmReserved(20L, 3L)).thenReturn(1);
-        when(inventoryRepository.findByProductId(10L)).thenReturn(Optional.of(inventory(10L, 8L, 0L, 2L, 1L)));
-        when(inventoryRepository.findByProductId(20L)).thenReturn(Optional.of(inventory(20L, 7L, 0L, 3L, 1L)));
+        when(inventoryRepository.confirmReserved(PRODUCT_1, 2L)).thenReturn(1);
+        when(inventoryRepository.confirmReserved(PRODUCT_2, 3L)).thenReturn(1);
+        when(inventoryRepository.findByProductId(PRODUCT_1)).thenReturn(Optional.of(inventory(PRODUCT_1, 8L, 0L, 2L, 1L)));
+        when(inventoryRepository.findByProductId(PRODUCT_2)).thenReturn(Optional.of(inventory(PRODUCT_2, 7L, 0L, 3L, 1L)));
 
         inventoryService.confirmReservation(new ConfirmReservationRequested(eventId, orderId, reservationId));
 
@@ -310,15 +313,15 @@ class InventoryServiceTest {
                 reservationId,
                 ReservationStatus.PARTIAL,
                 LocalDateTime.now().plusMinutes(1),
-                item(10L, 2L, ReservationItemStatus.RESERVED),
-                item(20L, 3L, ReservationItemStatus.OUT_OF_STOCK)
+                item(PRODUCT_1, 2L, ReservationItemStatus.RESERVED),
+                item(PRODUCT_2, 3L, ReservationItemStatus.OUT_OF_STOCK)
         );
         when(processedEventRepository.tryMarkProcessed(eventId, "CONFIRM_RESERVATION_REQUESTED"))
                 .thenReturn(1);
         when(inventoryReservationRepository.findByIdForUpdate(reservationId))
                 .thenReturn(Optional.of(reservation));
-        when(inventoryRepository.confirmReserved(10L, 2L)).thenReturn(1);
-        when(inventoryRepository.findByProductId(10L)).thenReturn(Optional.of(inventory(10L, 8L, 0L, 2L, 1L)));
+        when(inventoryRepository.confirmReserved(PRODUCT_1, 2L)).thenReturn(1);
+        when(inventoryRepository.findByProductId(PRODUCT_1)).thenReturn(Optional.of(inventory(PRODUCT_1, 8L, 0L, 2L, 1L)));
 
         inventoryService.confirmReservation(new ConfirmReservationRequested(eventId, orderId, reservationId));
 
@@ -326,7 +329,7 @@ class InventoryServiceTest {
         assertThat(reservation.getItems())
                 .extracting(InventoryReservationItemEntity::getStatus)
                 .containsExactly(ReservationItemStatus.CONFIRMED, ReservationItemStatus.OUT_OF_STOCK);
-        verify(inventoryRepository, never()).confirmReserved(20L, 3L);
+        verify(inventoryRepository, never()).confirmReserved(PRODUCT_2, 3L);
     }
 
     @Test
@@ -338,13 +341,13 @@ class InventoryServiceTest {
                 reservationId,
                 ReservationStatus.ACTIVE,
                 LocalDateTime.now().plusMinutes(1),
-                item(10L, 2L, ReservationItemStatus.RESERVED)
+                item(PRODUCT_1, 2L, ReservationItemStatus.RESERVED)
         );
         when(processedEventRepository.tryMarkProcessed(eventId, "CONFIRM_RESERVATION_REQUESTED"))
                 .thenReturn(1);
         when(inventoryReservationRepository.findByIdForUpdate(reservationId))
                 .thenReturn(Optional.of(reservation));
-        when(inventoryRepository.confirmReserved(10L, 2L)).thenReturn(0);
+        when(inventoryRepository.confirmReserved(PRODUCT_1, 2L)).thenReturn(0);
 
         assertThatThrownBy(() -> inventoryService.confirmReservation(
                 new ConfirmReservationRequested(eventId, orderId, reservationId)
@@ -379,15 +382,15 @@ class InventoryServiceTest {
                 reservationId,
                 ReservationStatus.ACTIVE,
                 LocalDateTime.now().plusMinutes(1),
-                item(10L, 2L, ReservationItemStatus.RESERVED),
-                item(20L, 1L, ReservationItemStatus.OUT_OF_STOCK)
+                item(PRODUCT_1, 2L, ReservationItemStatus.RESERVED),
+                item(PRODUCT_2, 1L, ReservationItemStatus.OUT_OF_STOCK)
         );
         reservation.setOrderId(orderId);
         when(processedEventRepository.tryMarkProcessed(eventId, "CANCEL_RESERVATION_REQUESTED"))
                 .thenReturn(1);
         when(inventoryReservationRepository.findByIdForUpdate(reservationId))
                 .thenReturn(Optional.of(reservation));
-        when(inventoryRepository.releaseReserved(10L, 2L)).thenReturn(1);
+        when(inventoryRepository.releaseReserved(PRODUCT_1, 2L)).thenReturn(1);
 
         inventoryService.cancelReservation(new CancelReservationRequested(eventId, orderId, reservationId));
 
@@ -412,16 +415,16 @@ class InventoryServiceTest {
                 reservationId,
                 ReservationStatus.CONFIRMED,
                 LocalDateTime.now().plusMinutes(1),
-                item(10L, 2L, ReservationItemStatus.CONFIRMED)
+                item(PRODUCT_1, 2L, ReservationItemStatus.CONFIRMED)
         );
         reservation.setOrderId(orderId);
-        InventoryEntity inventory = inventory(10L, 10L, 0L, 0L, 3L);
+        InventoryEntity inventory = inventory(PRODUCT_1, 10L, 0L, 0L, 3L);
         when(processedEventRepository.tryMarkProcessed(eventId, "CANCEL_RESERVATION_REQUESTED"))
                 .thenReturn(1);
         when(inventoryReservationRepository.findByIdForUpdate(reservationId))
                 .thenReturn(Optional.of(reservation));
-        when(inventoryRepository.reverseQuantity(10L, 2L)).thenReturn(1);
-        when(inventoryRepository.findByProductId(10L)).thenReturn(Optional.of(inventory));
+        when(inventoryRepository.reverseQuantity(PRODUCT_1, 2L)).thenReturn(1);
+        when(inventoryRepository.findByProductId(PRODUCT_1)).thenReturn(Optional.of(inventory));
 
         inventoryService.cancelReservation(new CancelReservationRequested(eventId, orderId, reservationId));
 
@@ -450,7 +453,7 @@ class InventoryServiceTest {
                 reservationId,
                 ReservationStatus.EXPIRED,
                 LocalDateTime.now().minusMinutes(1),
-                item(10L, 2L, ReservationItemStatus.EXPIRED)
+                item(PRODUCT_1, 2L, ReservationItemStatus.EXPIRED)
         );
         when(processedEventRepository.tryMarkProcessed(eventId, "CANCEL_RESERVATION_REQUESTED"))
                 .thenReturn(1);
@@ -468,20 +471,20 @@ class InventoryServiceTest {
 
     @Test
     void releaseItemThrowsWhenRepositoryCannotReleaseStock() {
-        when(inventoryRepository.releaseReserved(10L, 2L)).thenReturn(0);
+        when(inventoryRepository.releaseReserved(PRODUCT_1, 2L)).thenReturn(0);
 
-        assertThatThrownBy(() -> inventoryService.releaseItem(10L, 2L))
+        assertThatThrownBy(() -> inventoryService.releaseItem(PRODUCT_1, 2L))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Unable to release reserved inventory");
     }
 
     @Test
     void getInventoryByProductIdThrowsWhenProductDoesNotExist() {
-        when(inventoryRepository.findByProductId(404L)).thenReturn(Optional.empty());
+        when(inventoryRepository.findByProductId(MISSING_PRODUCT)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> inventoryService.getInventoryByProductId(404L))
+        assertThatThrownBy(() -> inventoryService.getInventoryByProductId(MISSING_PRODUCT))
                 .isInstanceOf(ProductIdNotFoundException.class)
-                .hasMessage("Unable to find product id: 404");
+                .hasMessage("Unable to find product id: " + MISSING_PRODUCT);
     }
 
     @Test
@@ -500,14 +503,14 @@ class InventoryServiceTest {
                 orderId,
                 LocalDateTime.now().plusMinutes(3),
                 List.of(
-                        new ReservationItemRequested(10L, 2L),
-                        new ReservationItemRequested(20L, 3L)
+                        new ReservationItemRequested(PRODUCT_1, 2L),
+                        new ReservationItemRequested(PRODUCT_2, 3L)
                 )
         );
     }
 
     private static InventoryEntity inventory(
-            Long productId,
+            UUID productId,
             Long quantity,
             Long reservedQuantity,
             Long itemSold,
@@ -542,7 +545,7 @@ class InventoryServiceTest {
     }
 
     private static InventoryReservationItemEntity item(
-            Long productId,
+            UUID productId,
             Long quantity,
             ReservationItemStatus status
     ) {

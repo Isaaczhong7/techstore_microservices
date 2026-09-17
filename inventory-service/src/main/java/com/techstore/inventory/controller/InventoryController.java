@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("api/inventory")
@@ -22,7 +23,7 @@ public class InventoryController {
 
     @PatchMapping("/{id}/update")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public void updateSpecificProduct(@PathVariable Long id, @RequestBody UpdateProductRequest request){
+    public void updateSpecificProduct(@PathVariable UUID id, @RequestBody UpdateProductRequest request){
         inventoryService.updateSpecificProduct(id, request);
     }
 

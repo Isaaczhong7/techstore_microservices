@@ -2,11 +2,13 @@ package com.techstore.order.dto;
 
 import lombok.*;
 
+import java.util.UUID;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProductEntry {
-    private Long productId;
+    private UUID productId;
     private Long quantity;
 }

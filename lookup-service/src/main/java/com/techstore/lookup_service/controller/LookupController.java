@@ -11,6 +11,7 @@ import com.techstore.lookup_service.dto.ProductItem;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 
 
 @RestController
@@ -34,7 +35,7 @@ public class LookupController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ProductItem> fetchSpecificItem(
-            @PathVariable Long id
+            @PathVariable UUID id
     ) {
 
         return ResponseEntity.ok(

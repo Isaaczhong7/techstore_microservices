@@ -22,7 +22,8 @@ public class ProductService {
     private final OutboxEventService outboxEventService;
     private final ProcessedEventRepository processedEventRepository;
 
-    public void createProduct(CreateProductRequest request){
+    public List<ProductItemResponse> createProduct(CreateProductRequest request){
+        List<ProductItemResponse> created = new ArrayList<>();
         for(ProductEntry entry : request.getItems()){
             ProductEntity product = ProductEntity.builder()
                     .productName(entry.getProductName())
@@ -32,14 +33,15 @@ public class ProductService {
                     .active(entry.getActive())
                     .build();
 
-            productRepository.save(product);
+            ProductEntity saved = productRepository.save(product);
 
-            ProductItemCompletedWrapper(product.getId());
+            created.add(ProductItemCompletedWrapper(saved.getId()));
         }
+        return created;
 
     }
 
-    public void ProductItemCompletedWrapper(Long id){
+    public ProductItemResponse ProductItemCompletedWrapper(UUID id){
         ProductEntity product = productRepository.findById(id)
                 .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + id));
 
@@ -54,11 +56,12 @@ public class ProductService {
                 .build();
 
         outboxEventService.saveEvent(
-                UUID.randomUUID(),
+                product.getId(),
                 "PRODUCT_ITEM_COMPLETED",
                 "product-item-update",
                 response
         );
+        return response;
     }
 
     public List<ProductItemResponse> getAllProducts(){
@@ -76,7 +79,7 @@ public class ProductService {
     }
 
     @Transactional
-    public UpdateStatus updateProduct(Long id, UpdateProductRequest request){
+    public UpdateStatus updateProduct(UUID id, UpdateProductRequest request){
         ProductEntity product = productRepository.findById(id)
                 .orElseThrow(() ->
                         new ProductNotFoundException("Product not found with id: " + id)
@@ -111,16 +114,19 @@ public class ProductService {
     public void checkProduct(ProductCheckRequested request){
         System.out.println("hello from kafka listener query-product");
 
-        List<ProductEntry> items = new ArrayList<>();
+        List<ProductItemResponse> items = new ArrayList<>();
         for(com.techstore.kafka.order.ProductEntry entry : request.getProducts()){
             ProductEntity product = productRepository.findById(entry.getProductId())
                     .orElseThrow(() -> new ProductNotFoundException("unable to find product"));
 
-            ProductEntry item = ProductEntry.builder()
+            ProductItemResponse item = ProductItemResponse.builder()
                     .productId(product.getId())
                     .active(product.isActive())
                     .price(product.getPrice())
                     .productName(product.getProductName())
+                    .description(product.getDescription())
+                    .category(product.getCategory())
+                    .version(product.getVersion())
                     .build();
             items.add(item);
         }

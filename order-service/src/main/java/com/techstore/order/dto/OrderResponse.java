@@ -1,6 +1,7 @@
 package com.techstore.order.dto;
 
 import com.techstore.order.entity.OrderStatus;
+import com.techstore.order.entity.PaymentStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +22,8 @@ public class OrderResponse {
 
     private UUID reservationId;
 
+    private UUID paymentId;
+
     private UUID customerId;
 
     private String email;
@@ -29,7 +32,11 @@ public class OrderResponse {
 
     private OrderStatus status;
 
+    private PaymentStatus paymentStatus;
+
     private BigDecimal totalAmount;
+
+    private LocalDateTime createdAt;
 
     private LocalDateTime expiresAt;
 

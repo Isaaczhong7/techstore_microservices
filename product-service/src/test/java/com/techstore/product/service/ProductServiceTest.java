@@ -31,6 +31,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ProductServiceTest {
+    private static final UUID PRODUCT_1 = UUID.fromString("00000000-0000-0000-0000-000000000010");
+    private static final UUID PRODUCT_2 = UUID.fromString("00000000-0000-0000-0000-000000000020");
+    private static final UUID MISSING_PRODUCT = UUID.fromString("00000000-0000-0000-0000-000000000404");
 
     private ProductRepository productRepository;
     private OutboxEventService outboxEventService;
@@ -51,14 +54,14 @@ class ProductServiceTest {
 
         when(productRepository.save(any(ProductEntity.class))).thenAnswer(invocation -> {
             ProductEntity product = invocation.getArgument(0);
-            product.setId(product.getProductName().equals("Laptop") ? 10L : 20L);
+            product.setId(product.getProductName().equals("Laptop") ? PRODUCT_1 : PRODUCT_2);
             product.setVersion(0L);
             return product;
         });
-        when(productRepository.findById(10L)).thenReturn(Optional.of(product(10L, "Laptop", ItemCategory.LAPTOP, "Fast", "1299.99", true, 0L)));
-        when(productRepository.findById(20L)).thenReturn(Optional.of(product(20L, "Mouse", ItemCategory.MOUSE, "Precise", "39.99", true, 0L)));
+        when(productRepository.findById(PRODUCT_1)).thenReturn(Optional.of(product(PRODUCT_1, "Laptop", ItemCategory.LAPTOP, "Fast", "1299.99", true, 0L)));
+        when(productRepository.findById(PRODUCT_2)).thenReturn(Optional.of(product(PRODUCT_2, "Mouse", ItemCategory.MOUSE, "Precise", "39.99", true, 0L)));
 
-        productService.createProduct(CreateProductRequest.builder().items(List.of(laptop, mouse)).build());
+        List<ProductItemResponse> created = productService.createProduct(CreateProductRequest.builder().items(List.of(laptop, mouse)).build());
 
         ArgumentCaptor<ProductEntity> saved = ArgumentCaptor.forClass(ProductEntity.class);
         verify(productRepository, times(2)).save(saved.capture());
@@ -69,15 +72,16 @@ class ProductServiceTest {
                         org.assertj.core.groups.Tuple.tuple("Mouse", ItemCategory.MOUSE, "Precise", new BigDecimal("39.99"), true)
                 );
         verify(outboxEventService, times(2)).saveEvent(any(UUID.class), eq("PRODUCT_ITEM_COMPLETED"), eq("product-item-update"), any(ProductItemResponse.class));
+        assertThat(created).extracting(ProductItemResponse::getProductId).containsExactly(PRODUCT_1, PRODUCT_2);
     }
 
     @Test
     void productItemCompletedWrapperThrowsWhenProductDoesNotExist() {
-        when(productRepository.findById(404L)).thenReturn(Optional.empty());
+        when(productRepository.findById(MISSING_PRODUCT)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> productService.ProductItemCompletedWrapper(404L))
+        assertThatThrownBy(() -> productService.ProductItemCompletedWrapper(MISSING_PRODUCT))
                 .isInstanceOf(ProductNotFoundException.class)
-                .hasMessage("Product not found with id: 404");
+                .hasMessage("Product not found with id: " + MISSING_PRODUCT);
 
         verify(outboxEventService, never()).saveEvent(any(), any(), any(), any());
     }
@@ -85,8 +89,8 @@ class ProductServiceTest {
     @Test
     void getAllProductsMapsEntitiesToResponses() {
         when(productRepository.findAll()).thenReturn(List.of(
-                product(10L, "Laptop", ItemCategory.LAPTOP, "Fast", "1299.99", true, 2L),
-                product(20L, "Mouse", ItemCategory.MOUSE, "Precise", "39.99", false, 1L)
+                product(PRODUCT_1, "Laptop", ItemCategory.LAPTOP, "Fast", "1299.99", true, 2L),
+                product(PRODUCT_2, "Mouse", ItemCategory.MOUSE, "Precise", "39.99", false, 1L)
         ));
 
         List<ProductItemResponse> products = productService.getAllProducts();
@@ -94,18 +98,18 @@ class ProductServiceTest {
         assertThat(products)
                 .extracting(ProductItemResponse::getProductId, ProductItemResponse::getProductName, ProductItemResponse::getCategory, ProductItemResponse::getActive, ProductItemResponse::getVersion)
                 .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple(10L, "Laptop", ItemCategory.LAPTOP, true, 2L),
-                        org.assertj.core.groups.Tuple.tuple(20L, "Mouse", ItemCategory.MOUSE, false, 1L)
+                        org.assertj.core.groups.Tuple.tuple(PRODUCT_1, "Laptop", ItemCategory.LAPTOP, true, 2L),
+                        org.assertj.core.groups.Tuple.tuple(PRODUCT_2, "Mouse", ItemCategory.MOUSE, false, 1L)
                 );
     }
 
     @Test
     void updateProductAppliesOnlyProvidedFieldsAndPublishesUpdate() {
-        ProductEntity product = product(10L, "Old", ItemCategory.DESKTOP, "Old desc", "500.00", false, 4L);
-        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+        ProductEntity product = product(PRODUCT_1, "Old", ItemCategory.DESKTOP, "Old desc", "500.00", false, 4L);
+        when(productRepository.findById(PRODUCT_1)).thenReturn(Optional.of(product));
 
         var status = productService.updateProduct(
-                10L,
+                PRODUCT_1,
                 new UpdateProductRequest("New", null, ItemCategory.LAPTOP, new BigDecimal("699.00"), true)
         );
 
@@ -120,47 +124,47 @@ class ProductServiceTest {
 
     @Test
     void updateProductThrowsWhenProductDoesNotExist() {
-        when(productRepository.findById(404L)).thenReturn(Optional.empty());
+        when(productRepository.findById(MISSING_PRODUCT)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> productService.updateProduct(404L, new UpdateProductRequest()))
+        assertThatThrownBy(() -> productService.updateProduct(MISSING_PRODUCT, new UpdateProductRequest()))
                 .isInstanceOf(ProductNotFoundException.class)
-                .hasMessage("Product not found with id: 404");
+                .hasMessage("Product not found with id: " + MISSING_PRODUCT);
     }
 
     @Test
     void checkProductPublishesProductCheckForRequestedProducts() {
         UUID orderId = UUID.randomUUID();
-        when(productRepository.findById(10L)).thenReturn(Optional.of(product(10L, "Laptop", ItemCategory.LAPTOP, "Fast", "1299.99", true, 2L)));
-        when(productRepository.findById(20L)).thenReturn(Optional.of(product(20L, "Mouse", ItemCategory.MOUSE, "Precise", "39.99", false, 1L)));
+        when(productRepository.findById(PRODUCT_1)).thenReturn(Optional.of(product(PRODUCT_1, "Laptop", ItemCategory.LAPTOP, "Fast", "1299.99", true, 2L)));
+        when(productRepository.findById(PRODUCT_2)).thenReturn(Optional.of(product(PRODUCT_2, "Mouse", ItemCategory.MOUSE, "Precise", "39.99", false, 1L)));
 
         productService.checkProduct(new ProductCheckRequested(
                 UUID.randomUUID(),
                 orderId.toString(),
                 List.of(
-                        new com.techstore.kafka.order.ProductEntry(10L, 2L),
-                        new com.techstore.kafka.order.ProductEntry(20L, 1L)
+                        new com.techstore.kafka.order.ProductEntry(PRODUCT_1, 2L),
+                        new com.techstore.kafka.order.ProductEntry(PRODUCT_2, 1L)
                 )
         ));
 
         ArgumentCaptor<QueryProductsResponse> payload = ArgumentCaptor.forClass(QueryProductsResponse.class);
         verify(outboxEventService).saveEvent(eq(orderId), eq("PRODUCT_CHECK_COMPLETED"), eq("product-check"), payload.capture());
         assertThat(payload.getValue().getProductList())
-                .extracting(ProductEntry::getProductId, ProductEntry::getProductName, ProductEntry::getActive)
+                .extracting(ProductItemResponse::getProductId, ProductItemResponse::getProductName, ProductItemResponse::getActive)
                 .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple(10L, "Laptop", true),
-                        org.assertj.core.groups.Tuple.tuple(20L, "Mouse", false)
+                        org.assertj.core.groups.Tuple.tuple(PRODUCT_1, "Laptop", true),
+                        org.assertj.core.groups.Tuple.tuple(PRODUCT_2, "Mouse", false)
                 );
     }
 
     @Test
     void checkProductThrowsWhenAnyRequestedProductIsMissing() {
         UUID orderId = UUID.randomUUID();
-        when(productRepository.findById(10L)).thenReturn(Optional.empty());
+        when(productRepository.findById(PRODUCT_1)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> productService.checkProduct(new ProductCheckRequested(
                 UUID.randomUUID(),
                 orderId.toString(),
-                List.of(new com.techstore.kafka.order.ProductEntry(10L, 2L))
+                List.of(new com.techstore.kafka.order.ProductEntry(PRODUCT_1, 2L))
         )))
                 .isInstanceOf(ProductNotFoundException.class)
                 .hasMessage("unable to find product");
@@ -178,7 +182,7 @@ class ProductServiceTest {
                 .build();
     }
 
-    private static ProductEntity product(Long id, String name, ItemCategory category, String description, String price, boolean active, Long version) {
+    private static ProductEntity product(UUID id, String name, ItemCategory category, String description, String price, boolean active, Long version) {
         return ProductEntity.builder()
                 .id(id)
                 .productName(name)

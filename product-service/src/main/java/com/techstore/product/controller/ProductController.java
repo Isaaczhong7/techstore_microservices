@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("api/products")
@@ -17,13 +18,13 @@ public class ProductController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public void createProduct(@RequestBody CreateProductRequest request){
-        productService.createProduct(request);
+    public List<ProductItemResponse> createProduct(@RequestBody CreateProductRequest request){
+        return productService.createProduct(request);
     }
 
 
     @PatchMapping("/{id}/update")
-    public UpdateStatus createProduct(@PathVariable Long id,
+    public UpdateStatus updateProductInfo(@PathVariable UUID id,
                                       @RequestBody UpdateProductRequest request){
         return productService.updateProduct(id,request);
     }
