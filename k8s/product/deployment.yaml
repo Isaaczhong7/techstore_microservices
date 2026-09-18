@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: product-service
+  namespace: techstore
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: product-service
+
+  template:
+    metadata:
+      labels:
+        app: product-service
+
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: product-service
+
+          image: techstore-microservices-product-service:latest
+          imagePullPolicy: Never
+
+          ports:
+            - containerPort: 8081
+
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://postgres:5432/product_db
+
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              value: kafka:9092
+
+            - name: SPRING_KAFKA_PROPERTIES_SCHEMA_REGISTRY_URL
+              value: http://schema-registry:8081
+
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Dorg.apache.avro.SERIALIZABLE_PACKAGES=com.techstore.kafka"

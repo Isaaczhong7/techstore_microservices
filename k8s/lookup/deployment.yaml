@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: lookup-service
+  namespace: techstore
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: lookup-service
+
+  template:
+    metadata:
+      labels:
+        app: lookup-service
+
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: lookup-service
+          image: techstore-microservices-lookup-service:latest
+          imagePullPolicy: Never
+
+          ports:
+            - containerPort: 8084
+
+          env:
+            - name: SERVICES_PRODUCT_BASE_URL
+              value: http://product-service:8081
+
+            - name: SERVICES_INVENTORY_BASE_URL
+              value: http://inventory-service:8082
+
+            - name: SPRING_DATA_REDIS_HOST
+              value: redis
+
+            - name: SPRING_DATA_REDIS_PORT
+              value: "6379"
+
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              value: kafka:9092
+
+            - name: SPRING_KAFKA_PROPERTIES_SCHEMA_REGISTRY_URL
+              value: http://schema-registry:8081
+
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://postgres:5432/lookup_db
+
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Dorg.apache.avro.SERIALIZABLE_PACKAGES=com.techstore.kafka"

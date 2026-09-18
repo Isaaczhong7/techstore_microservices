@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: payment-service
+  namespace: techstore
+
+spec:
+  selector:
+    app: payment-service
+
+  ports:
+    - port: 8083
+      targetPort: 8083
+
+  type: ClusterIP
