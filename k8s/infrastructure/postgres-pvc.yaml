@@ -33,9 +33,12 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+
+  storageClassName: gp3
+
   resources:
     requests:
-      storage: 5Gi
+      storage: 10Gi
 
 ---
 
@@ -47,6 +50,9 @@ metadata:
 
 spec:
   replicas: 1
+
+  strategy:
+    type: Recreate
 
   selector:
     matchLabels:
@@ -82,6 +88,8 @@ spec:
                 secretKeyRef:
                   name: postgres-secret
                   key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
 
           volumeMounts:
             - name: postgres-storage
