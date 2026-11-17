@@ -5,7 +5,7 @@ metadata:
 
 spec:
   acme:
-    email: bingxiangzhong@aol.com
+    email: {{ .Values.letsencrypt.email }}
     server: https://acme-v02.api.letsencrypt.org/directory
 
     privateKeySecretRef:
