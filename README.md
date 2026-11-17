@@ -42,6 +42,9 @@ The system is composed of the following services:
 - Avro serialization
 - React + Vite + TypeScript
 - Docker + Docker Compose
+- Kubernetes manifests for EKS deployment
+- GitHub Actions for CI/CD
+- AWS EKS for production deployment
 
 ## Repository structure
 
