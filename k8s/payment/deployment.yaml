@@ -21,8 +21,8 @@ spec:
       enableServiceLinks: false
       containers:
         - name: payment-service
-          image: techstore-microservices-payment-service:latest
-          imagePullPolicy: Never
+          image: 711396989537.dkr.ecr.us-east-1.amazonaws.com/techstore/payment-service:latest
+          imagePullPolicy: Always
 
           ports:
             - containerPort: 8083

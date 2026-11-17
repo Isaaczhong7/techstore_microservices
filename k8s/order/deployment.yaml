@@ -22,8 +22,8 @@ spec:
       containers:
         - name: order-service
 
-          image: techstore-microservices-order-service:latest
-          imagePullPolicy: Never
+          image: 711396989537.dkr.ecr.us-east-1.amazonaws.com/techstore/order-service:latest
+          imagePullPolicy: Always
 
           ports:
             - containerPort: 8080

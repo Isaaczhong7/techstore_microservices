@@ -22,8 +22,8 @@ spec:
       containers:
         - name: product-service
 
-          image: techstore-microservices-product-service:latest
-          imagePullPolicy: Never
+          image: 711396989537.dkr.ecr.us-east-1.amazonaws.com/techstore/product-service:latest
+          imagePullPolicy: Always
 
           ports:
             - containerPort: 8081

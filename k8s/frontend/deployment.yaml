@@ -22,8 +22,8 @@ spec:
 
       containers:
         - name: frontend
-          image: techstore-microservices-frontend:latest
-          imagePullPolicy: Never
+          image: 711396989537.dkr.ecr.us-east-1.amazonaws.com/techstore/frontend:latest
+          imagePullPolicy: Always
 
           ports:
             - containerPort: 80
